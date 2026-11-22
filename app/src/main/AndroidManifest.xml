@@ -77,6 +77,21 @@
         <activity
             android:name=".ui.activity.TransferActivity"
             android:screenOrientation="sensorLandscape" />
+        <!-- 语音/搜索指令深链入口: 供夏杰语音等电视端语音助手与外部工具调用 -->
+        <activity
+            android:name=".ui.activity.VoiceEntryActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tvbox" android:host="voice" />
+                <data android:scheme="tvbox" android:host="search" />
+            </intent-filter>
+        </activity>
 
         <service
             android:name=".dlna.DLNACastService"

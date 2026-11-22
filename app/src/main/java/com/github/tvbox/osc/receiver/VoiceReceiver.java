@@ -3,8 +3,6 @@ package com.github.tvbox.osc.receiver;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
-import android.os.Bundle;
 import android.text.TextUtils;
 
 import com.github.tvbox.osc.voice.VoiceCommandManager;
@@ -43,23 +41,10 @@ public class VoiceReceiver extends BroadcastReceiver {
 
     /** 从extras/uri中提取语音文本, 兼容各家助手的常用字段名 */
     private String pickText(Intent intent) {
-        Bundle extras = intent.getExtras();
-        String[] keys = {"text", "query", "word", "keyword", "voice_text", "command", android.app.SearchManager.QUERY};
-        if (extras != null) {
-            for (String key : keys) {
-                Object value = extras.get(key);
-                if (value instanceof String && !TextUtils.isEmpty((String) value)) {
-                    return (String) value;
-                }
-            }
+        String text = VoiceCommandManager.extractText(intent);
+        if (TextUtils.isEmpty(text) && ACTION_WEB_SEARCH.equals(intent.getAction()) && intent.getData() != null) {
+            text = intent.getData().toString();
         }
-        Uri data = intent.getData();
-        if (data != null) {
-            String value = data.getQueryParameter("text");
-            if (TextUtils.isEmpty(value)) value = data.getQueryParameter("query");
-            if (!TextUtils.isEmpty(value)) return value;
-            if (ACTION_WEB_SEARCH.equals(intent.getAction())) return data.toString();
-        }
-        return null;
+        return text;
     }
 }

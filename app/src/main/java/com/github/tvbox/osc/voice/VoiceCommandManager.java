@@ -3,7 +3,9 @@ package com.github.tvbox.osc.voice;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
+import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.text.TextUtils;
 
 import com.github.tvbox.osc.event.VoiceEvent;
@@ -66,6 +68,33 @@ public class VoiceCommandManager {
         }
         result.addProperty("msg", msg);
         return result;
+    }
+
+    /**
+     * 从语音相关intent中提取语音文本。
+     * 兼容各家语音助手(小爱/天猫精灵/小度/夏杰语音/电视自带语音)常用的字段名与URI参数。
+     */
+    public static String extractText(Intent intent) {
+        if (intent == null) return null;
+        Bundle extras = intent.getExtras();
+        String[] keys = {"text", "query", "word", "keyword", "title", "voice_text", "command", android.app.SearchManager.QUERY};
+        if (extras != null) {
+            for (String key : keys) {
+                Object value = extras.get(key);
+                if (value instanceof String && !TextUtils.isEmpty((String) value)) {
+                    return (String) value;
+                }
+            }
+        }
+        Uri data = intent.getData();
+        if (data != null) {
+            String value = data.getQueryParameter("text");
+            if (TextUtils.isEmpty(value)) value = data.getQueryParameter("query");
+            if (TextUtils.isEmpty(value)) value = data.getQueryParameter("word");
+            if (TextUtils.isEmpty(value)) value = data.getQueryParameter("keyword");
+            if (!TextUtils.isEmpty(value)) return value;
+        }
+        return null;
     }
 
     private String dispatch(Context context, VoiceCommand cmd) {
