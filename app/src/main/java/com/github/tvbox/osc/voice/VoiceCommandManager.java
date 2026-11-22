@@ -133,6 +133,8 @@ public class VoiceCommandManager {
             case VoiceCommand.TYPE_PLAY_REPLAY:
             case VoiceCommand.TYPE_PLAY_EXIT:
                 return dispatchPlayback(context, cmd);
+            case VoiceCommand.TYPE_RESULT_PICK:
+                return dispatchResultPick(context, cmd);
             case VoiceCommand.TYPE_VOLUME_UP:
             case VoiceCommand.TYPE_VOLUME_DOWN:
             case VoiceCommand.TYPE_VOLUME_MUTE:
@@ -208,6 +210,23 @@ public class VoiceCommandManager {
         VoiceEvent event = new VoiceEvent(cmd, liveTop ? VoiceEvent.TARGET_LIVE : VoiceEvent.TARGET_VOD);
         EventBus.getDefault().post(event);
         return playbackResultMsg(cmd);
+    }
+
+    /** 夏杰"第N个": 结果页在栈内→直接选第N个; 否则用最近一次语音搜索词重新搜索并选第N个 */
+    private String dispatchResultPick(Context context, VoiceCommand cmd) {
+        if (cmd.number <= 0) return "无效的序号";
+        boolean searchActive = AppManager.getInstance().getActivity(
+                com.github.tvbox.osc.ui.activity.FastSearchActivity.class) != null;
+        if (searchActive) {
+            EventBus.getDefault().post(new VoiceEvent(cmd));
+            return "正在选择第" + cmd.number + "个结果";
+        }
+        String lastKeyword = Hawk.get(HawkConfig.VOICE_LAST_SEARCH, "");
+        if (!TextUtils.isEmpty(lastKeyword)) {
+            SearchReceiver.send(context, lastKeyword, cmd.number);
+            return "重新搜索" + lastKeyword + "并播放第" + cmd.number + "个";
+        }
+        return "请先搜索影片后再说第几个";
     }
 
     private void runOnMain(Runnable runnable) {

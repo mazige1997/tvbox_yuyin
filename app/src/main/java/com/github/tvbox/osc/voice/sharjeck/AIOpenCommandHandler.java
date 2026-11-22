@@ -101,13 +101,22 @@ public class AIOpenCommandHandler {
             return;
         }
 
-        // 3.2 控制指令: common=control + action/FastForward/FastBackward/SeekTo
+        // 3.2 控制指令: common=control + action/FastForward/FastBackward/SeekTo/PlayIndex
         if (AIOpenConstant.CMD_CONTROL.equals(common)) {
             String logText = "control " + (action == null ? "" : action)
                     + (fastForward > 0 ? " +" + fastForward + "s" : "")
                     + (fastBackward > 0 ? " -" + fastBackward + "s" : "")
-                    + (seekTo > 0 ? " to" + seekTo + "s" : "");
-            VoiceCommand cmd = mapControlAction(action, fastForward, fastBackward, seekTo);
+                    + (seekTo > 0 ? " to" + seekTo + "s" : "")
+                    + (TextUtils.isEmpty(playIndex) ? "" : " PlayIndex=" + playIndex);
+            // 夏杰"第N个"(搜索结果选择): control+PlayIndex, 无其他控制参数
+            int pickIndex = parseIndex(playIndex);
+            VoiceCommand cmd;
+            if (pickIndex > 0 && fastForward <= 0 && fastBackward <= 0 && seekTo <= 0 && TextUtils.isEmpty(action)) {
+                cmd = new VoiceCommand(VoiceCommand.TYPE_RESULT_PICK);
+                cmd.number = pickIndex;
+            } else {
+                cmd = mapControlAction(action, fastForward, fastBackward, seekTo);
+            }
             JsonObject result;
             if (cmd == null) {
                 result = new JsonObject();

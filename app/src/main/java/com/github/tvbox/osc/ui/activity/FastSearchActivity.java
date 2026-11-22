@@ -28,6 +28,12 @@ import com.github.tvbox.osc.bean.Movie;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.event.ServerEvent;
+import android.widget.Toast;
+
+import com.github.tvbox.osc.event.VoiceEvent;
+import com.github.tvbox.osc.util.HawkConfig;
+import com.orhanobut.hawk.Hawk;
+import com.github.tvbox.osc.voice.VoiceCommand;
 import com.github.tvbox.osc.ui.adapter.FastListAdapter;
 import com.github.tvbox.osc.ui.adapter.FastSearchAdapter;
 import com.github.tvbox.osc.ui.adapter.SearchWordAdapter;
@@ -511,6 +517,19 @@ public class FastSearchActivity extends BaseActivity {
         }
     }
 
+    /** 语音指令: 选择第N个搜索结果(夏杰"第N个"/PlayIndex) */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onVoiceCommand(VoiceEvent event) {
+        if (event.command == null || event.command.type != VoiceCommand.TYPE_RESULT_PICK) return;
+        int number = event.command.number;
+        if (number <= 0 || searchAdapter.getData().isEmpty()) return;
+        pendingVoicePlayIndex = Math.min(number, searchAdapter.getData().size());
+        if (number > searchAdapter.getData().size()) {
+            Toast.makeText(requireContext(), "搜索结果只有" + searchAdapter.getData().size() + "个, 选择最后一个", Toast.LENGTH_SHORT).show();
+        }
+        checkPendingVoicePlayIndex();
+    }
+
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void server(ServerEvent event) {
         if (event.type == ServerEvent.SERVER_SEARCH) {
@@ -545,6 +564,7 @@ public class FastSearchActivity extends BaseActivity {
         cancel();
         showLoading();
         this.searchTitle = title;
+        Hawk.put(HawkConfig.VOICE_LAST_SEARCH, title);
         pendingVoicePlayIndex = null;
         fenci();
         mGridView.setVisibility(View.INVISIBLE);

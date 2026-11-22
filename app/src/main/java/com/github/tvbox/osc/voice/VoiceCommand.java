@@ -25,6 +25,7 @@ public class VoiceCommand {
     public static final int TYPE_SEEK_TO = 15;             // 跳转到指定秒
     public static final int TYPE_PLAY_REPLAY = 16;         // 重播当前
     public static final int TYPE_PLAY_EXIT = 17;           // 退出播放
+    public static final int TYPE_RESULT_PICK = 18;         // 选择第N个搜索结果(夏杰"第N个")
     public static final int TYPE_UNKNOWN = -1;
 
     public int type = TYPE_UNKNOWN;
@@ -80,6 +81,8 @@ public class VoiceCommand {
                 return "replay";
             case TYPE_PLAY_EXIT:
                 return "exit";
+            case TYPE_RESULT_PICK:
+                return "result_pick";
             default:
                 return "unknown";
         }
