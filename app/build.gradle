@@ -14,10 +14,11 @@ android {
     }
 
     defaultConfig {
-        applicationId 'com.github.tvbox.osc.jun'
+        //!!! 白名单验证测试版: 临时使用夏杰openapplist白名单中的包名, 验证后改回 com.github.tvbox.osc.jun
+        applicationId 'com.onbon.svr_main'
         targetSdkVersion 28
         versionCode 1
-        versionName '20261111-1518'
+        versionName '20261111-1518-spoof'
         multiDexEnabled true
         //设置room的Schema的位置
         javaCompileOptions {
