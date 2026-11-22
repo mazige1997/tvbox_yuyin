@@ -24,9 +24,17 @@ public class SearchReceiver extends BroadcastReceiver {
      * 发起一次远程搜索(远程搜索与语音搜索共用入口)
      */
     public static void send(Context context, String title) {
+        send(context, title, -1);
+    }
+
+    /**
+     * 发起一次远程搜索并指定"搜索后播放第N个结果"(语音搜索PlayIndex, 小于等于0时忽略)
+     */
+    public static void send(Context context, String title, int playIndex) {
         Intent intent = new Intent();
         Bundle bundle = new Bundle();
         bundle.putString("title", title);
+        if (playIndex > 0) bundle.putInt("playIndex", playIndex);
         intent.setAction(action);
         intent.setPackage(context.getPackageName());
         intent.setComponent(new ComponentName(context, SearchReceiver.class));

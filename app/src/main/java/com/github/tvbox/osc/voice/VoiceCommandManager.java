@@ -1,5 +1,6 @@
 package com.github.tvbox.osc.voice;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
@@ -51,7 +52,13 @@ public class VoiceCommandManager {
      * 解析并执行语音指令, 返回JSON结果供HTTP接口回显。
      */
     public JsonObject handle(Context context, String rawText) {
-        VoiceCommand cmd = VoiceCommandParser.parse(rawText);
+        return handleCommand(context, VoiceCommandParser.parse(rawText));
+    }
+
+    /**
+     * 执行已解析的语音指令(供夏杰语音AIOpen等结构化指令入口直接调用), 返回JSON结果。
+     */
+    public JsonObject handleCommand(Context context, VoiceCommand cmd) {
         JsonObject result = new JsonObject();
         JsonObject cmdJson = new JsonObject();
         cmdJson.addProperty("type", cmd.getTypeName());
@@ -100,8 +107,8 @@ public class VoiceCommandManager {
     private String dispatch(Context context, VoiceCommand cmd) {
         switch (cmd.type) {
             case VoiceCommand.TYPE_SEARCH:
-                SearchReceiver.send(context, cmd.keyword);
-                return "已开始搜索: " + cmd.keyword;
+                SearchReceiver.send(context, cmd.keyword, cmd.number);
+                return "已开始搜索: " + cmd.keyword + (cmd.number > 0 ? "(将播放第" + cmd.number + "个)" : "");
             case VoiceCommand.TYPE_LIVE_CHANNEL_BY_NAME:
             case VoiceCommand.TYPE_LIVE_CHANNEL_BY_NUMBER:
             case VoiceCommand.TYPE_LIVE_NEXT:
@@ -114,6 +121,9 @@ public class VoiceCommandManager {
             case VoiceCommand.TYPE_PLAY_RESUME:
             case VoiceCommand.TYPE_SEEK_FORWARD:
             case VoiceCommand.TYPE_SEEK_BACK:
+            case VoiceCommand.TYPE_SEEK_TO:
+            case VoiceCommand.TYPE_PLAY_REPLAY:
+            case VoiceCommand.TYPE_PLAY_EXIT:
                 return dispatchPlayback(context, cmd);
             case VoiceCommand.TYPE_VOLUME_UP:
             case VoiceCommand.TYPE_VOLUME_DOWN:
@@ -159,17 +169,45 @@ public class VoiceCommandManager {
     }
 
     private String dispatchPlayback(Context context, VoiceCommand cmd) {
-        boolean detailActive = AppManager.getInstance().getActivity(DetailActivity.class) != null;
-        boolean liveActive = AppManager.getInstance().getActivity(LivePlayActivity.class) != null;
+        AppManager appManager = AppManager.getInstance();
+        Activity current = appManager.isActivity() ? appManager.currentActivity() : null;
+        boolean detailTop = current instanceof DetailActivity;
+        boolean liveTop = current instanceof LivePlayActivity;
         boolean isEpisode = cmd.type == VoiceCommand.TYPE_EPISODE_GOTO
                 || cmd.type == VoiceCommand.TYPE_EPISODE_NEXT
                 || cmd.type == VoiceCommand.TYPE_EPISODE_PREV;
         boolean isSeek = cmd.type == VoiceCommand.TYPE_SEEK_FORWARD || cmd.type == VoiceCommand.TYPE_SEEK_BACK;
-        if (isEpisode && !detailActive) return "当前没有正在播放的剧集";
-        if (isSeek && liveActive) return "直播模式不支持快进快退";
-        if (!detailActive && !liveActive) return "当前没有正在播放的内容";
-        EventBus.getDefault().post(new VoiceEvent(cmd));
+        if (cmd.type == VoiceCommand.TYPE_PLAY_EXIT) {
+            // 退出播放: 直接结束栈顶的直播页/详情页(等价于遥控器返回键)
+            if (liveTop || detailTop) {
+                runOnMain(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            AppManager.getInstance().currentActivity().finish();
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                });
+                return "已退出播放";
+            }
+            return "当前没有正在播放的内容";
+        }
+        if (isEpisode && !detailTop) return "当前没有正在播放的剧集";
+        if ((isSeek || cmd.type == VoiceCommand.TYPE_SEEK_TO) && liveTop) return "直播模式不支持快进快退";
+        if (!detailTop && !liveTop) return "当前没有正在播放的内容";
+        // 按栈顶界面定向分发, 避免直播/点播两层同时响应
+        VoiceEvent event = new VoiceEvent(cmd, liveTop ? VoiceEvent.TARGET_LIVE : VoiceEvent.TARGET_VOD);
+        EventBus.getDefault().post(event);
         return playbackResultMsg(cmd);
+    }
+
+    private void runOnMain(Runnable runnable) {
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            runnable.run();
+        } else {
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(runnable);
+        }
     }
 
     private String playbackResultMsg(VoiceCommand cmd) {
@@ -188,6 +226,10 @@ public class VoiceCommandManager {
                 return "快进" + cmd.number + "秒";
             case VoiceCommand.TYPE_SEEK_BACK:
                 return "快退" + cmd.number + "秒";
+            case VoiceCommand.TYPE_SEEK_TO:
+                return "跳转到第" + cmd.number + "秒";
+            case VoiceCommand.TYPE_PLAY_REPLAY:
+                return "重播当前";
             default:
                 return "已执行";
         }

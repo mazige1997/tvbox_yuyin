@@ -86,6 +86,8 @@ public class FastSearchActivity extends BaseActivity {
     private FastSearchAdapter searchAdapter;
     private FastSearchAdapter searchAdapterFilter;
     private FastListAdapter spListAdapter;
+    /** 语音搜索PlayIndex待处理值: 搜索结果数足够时自动播放第N个 */
+    private Integer pendingVoicePlayIndex;
     private String searchTitle = "";
     private HashMap<String, String> spNames;
     private boolean isFilterMode = false;
@@ -501,6 +503,11 @@ public class FastSearchActivity extends BaseActivity {
             String title = intent.getStringExtra("title");
             showLoading();
             search(title);
+            // 语音搜索PlayIndex: 搜索后自动播放第N个结果
+            if (intent.hasExtra("playIndex")) {
+                int playIndex = intent.getIntExtra("playIndex", -1);
+                if (playIndex > 0) pendingVoicePlayIndex = playIndex;
+            }
         }
     }
 
@@ -538,6 +545,7 @@ public class FastSearchActivity extends BaseActivity {
         cancel();
         showLoading();
         this.searchTitle = title;
+        pendingVoicePlayIndex = null;
         fenci();
         mGridView.setVisibility(View.INVISIBLE);
         mGridViewFilter.setVisibility(View.GONE);
@@ -680,6 +688,20 @@ public class FastSearchActivity extends BaseActivity {
             showSuccess();
             if (!isFilterMode) mGridView.setVisibility(View.VISIBLE);
             searchAdapter.setNewData(data);
+        }
+        checkPendingVoicePlayIndex();
+    }
+
+    /** 语音搜索PlayIndex: 结果数足够时自动打开第N个结果 */
+    private void checkPendingVoicePlayIndex() {
+        if (pendingVoicePlayIndex == null) return;
+        int size = searchAdapter.getData().size();
+        if (size < pendingVoicePlayIndex) return;
+        int index = pendingVoicePlayIndex - 1;
+        pendingVoicePlayIndex = null;
+        Movie.Video video = searchAdapter.getData().get(index);
+        if (video != null) {
+            openSearchVideo(video, false);
         }
     }
 

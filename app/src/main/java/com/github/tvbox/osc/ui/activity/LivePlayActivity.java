@@ -1924,9 +1924,10 @@ public class LivePlayActivity extends BaseActivity {
 
     // ==================== 语音换台 ====================
 
-    /** 语音指令: 换台/上下台/暂停继续(由VoiceCommandManager通过EventBus分发) */
+    /** 语音指令: 换台/上下台/暂停继续/重播(由VoiceCommandManager通过EventBus分发) */
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onVoiceCommand(VoiceEvent event) {
+        if (event.target != null && !VoiceEvent.TARGET_LIVE.equals(event.target)) return;
         VoiceCommand cmd = event.command;
         if (cmd == null) return;
         switch (cmd.type) {
@@ -1947,6 +1948,9 @@ public class LivePlayActivity extends BaseActivity {
                 break;
             case VoiceCommand.TYPE_PLAY_RESUME:
                 if (mVideoView != null) mVideoView.resume();
+                break;
+            case VoiceCommand.TYPE_PLAY_REPLAY:
+                if (mVideoView != null) mVideoView.replay(true);
                 break;
         }
     }

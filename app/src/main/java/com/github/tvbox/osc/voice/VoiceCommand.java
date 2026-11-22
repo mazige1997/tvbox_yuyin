@@ -22,6 +22,9 @@ public class VoiceCommand {
     public static final int TYPE_VOLUME_UP = 12;           // 音量调大
     public static final int TYPE_VOLUME_DOWN = 13;         // 音量调小
     public static final int TYPE_VOLUME_MUTE = 14;         // 静音切换
+    public static final int TYPE_SEEK_TO = 15;             // 跳转到指定秒
+    public static final int TYPE_PLAY_REPLAY = 16;         // 重播当前
+    public static final int TYPE_PLAY_EXIT = 17;           // 退出播放
     public static final int TYPE_UNKNOWN = -1;
 
     public int type = TYPE_UNKNOWN;
@@ -71,6 +74,12 @@ public class VoiceCommand {
                 return "volume_down";
             case TYPE_VOLUME_MUTE:
                 return "mute";
+            case TYPE_SEEK_TO:
+                return "seek_to";
+            case TYPE_PLAY_REPLAY:
+                return "replay";
+            case TYPE_PLAY_EXIT:
+                return "exit";
             default:
                 return "unknown";
         }

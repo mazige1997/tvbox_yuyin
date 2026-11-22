@@ -185,9 +185,10 @@ public class PlayFragment extends BaseLazyFragment {
         }
     }
 
-    /** 语音指令: 换剧集/暂停继续/快进快退(由VoiceCommandManager通过EventBus分发) */
+    /** 语音指令: 换剧集/暂停继续/快进快退/重播/跳转(由VoiceCommandManager通过EventBus分发) */
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onVoiceCommand(VoiceEvent event) {
+        if (event.target != null && !VoiceEvent.TARGET_VOD.equals(event.target)) return;
         VoiceCommand cmd = event.command;
         if (cmd == null) return;
         switch (cmd.type) {
@@ -209,6 +210,12 @@ public class PlayFragment extends BaseLazyFragment {
             case VoiceCommand.TYPE_SEEK_FORWARD:
             case VoiceCommand.TYPE_SEEK_BACK:
                 seekBy(cmd.type == VoiceCommand.TYPE_SEEK_FORWARD ? cmd.number : -cmd.number);
+                break;
+            case VoiceCommand.TYPE_SEEK_TO:
+                if (mVideoView != null && cmd.number >= 0) mVideoView.seekTo(cmd.number * 1000L);
+                break;
+            case VoiceCommand.TYPE_PLAY_REPLAY:
+                if (mVideoView != null) mVideoView.replay(true);
                 break;
         }
     }

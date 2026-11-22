@@ -646,6 +646,7 @@ public class SearchActivity extends BaseActivity {
             if(Hawk.get(HawkConfig.FAST_SEARCH_MODE, true)){
                 Bundle bundle = new Bundle();
                 bundle.putString("title", title);
+                if (intent.hasExtra("playIndex")) bundle.putInt("playIndex", intent.getIntExtra("playIndex", -1));
                 jumpActivity(FastSearchActivity.class, bundle);
             }else {
                 search(title);

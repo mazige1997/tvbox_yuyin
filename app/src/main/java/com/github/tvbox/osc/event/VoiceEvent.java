@@ -10,9 +10,21 @@ import com.github.tvbox.osc.voice.VoiceCommand;
  * @author voice
  */
 public class VoiceEvent {
+    /** 目标: 直播页(LivePlayActivity) */
+    public static final String TARGET_LIVE = "live";
+    /** 目标: 点播播放页(PlayFragment) */
+    public static final String TARGET_VOD = "vod";
+
     public final VoiceCommand command;
+    /** 指令目标界面: null=不限(订阅者均响应), 否则仅匹配的界面响应 */
+    public String target;
 
     public VoiceEvent(VoiceCommand command) {
         this.command = command;
+    }
+
+    public VoiceEvent(VoiceCommand command, String target) {
+        this.command = command;
+        this.target = target;
     }
 }
