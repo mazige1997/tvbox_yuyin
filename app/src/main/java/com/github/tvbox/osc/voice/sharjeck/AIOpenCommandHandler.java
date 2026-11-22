@@ -33,6 +33,14 @@ public class AIOpenCommandHandler {
         String action = intent.getAction();
         if (TextUtils.isEmpty(action)) return;
         Bundle data = intent.getExtras();
+        // 对应SDK demo的收指令日志打印, 便于logcat对照排查
+        if (data != null) {
+            String common = data.getString(AIOpenConstant.PARAM_COMMON);
+            String keyword = data.getString(AIOpenConstant.PARAM_KEYWORD);
+            LOG.i("AIOpenCommandHandler receive: action=" + action
+                    + (common == null ? "" : ", common=" + common)
+                    + (keyword == null ? "" : ", keyword=" + keyword));
+        }
         try {
             switch (action) {
                 case AIOpenConstant.ACTION_APP_REGISTER_REQUIRE: {
