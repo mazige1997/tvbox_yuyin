@@ -9,6 +9,7 @@ import android.animation.IntEvaluator;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.CountDownTimer;
@@ -46,6 +47,7 @@ import com.github.tvbox.osc.bean.LiveEpgDate;
 import com.github.tvbox.osc.bean.LivePlayerManager;
 import com.github.tvbox.osc.bean.LiveSettingGroup;
 import com.github.tvbox.osc.bean.LiveSettingItem;
+import com.github.tvbox.osc.event.VoiceEvent;
 import com.github.tvbox.osc.player.controller.LiveController;
 import com.github.tvbox.osc.ui.adapter.LiveChannelGroupAdapter;
 import com.github.tvbox.osc.ui.adapter.LiveChannelItemAdapter;
@@ -56,6 +58,8 @@ import com.github.tvbox.osc.ui.adapter.LiveSettingItemAdapter;
 import com.github.tvbox.osc.ui.adapter.MyEpgAdapter;
 import com.github.tvbox.osc.ui.dialog.LivePasswordDialog;
 import com.github.tvbox.osc.ui.tv.widget.ViewObj;
+import com.github.tvbox.osc.voice.VoiceCommand;
+import com.github.tvbox.osc.voice.VoiceCommandParser;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.EpgUtil;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
@@ -75,6 +79,10 @@ import com.lzy.okgo.model.Response;
 import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -123,6 +131,10 @@ import xyz.doikki.videoplayer.player.VideoView;
  */
 public class LivePlayActivity extends BaseActivity {
     public static Context context;
+    // 语音指令待执行状态: 由语音入口直接拉起直播页时, 待频道列表加载完成后自动执行
+    private String pendingVoiceChannelName;
+    private int pendingVoiceChannelNumber = -1;
+    private String pendingVoiceChannelAction;
     private VideoView<xyz.doikki.videoplayer.player.AbstractPlayer> mVideoView;
     private View switchChannelSnapshotOverlay;
     private ImageView switchChannelSnapshotImage;
@@ -259,6 +271,8 @@ public class LivePlayActivity extends BaseActivity {
     @Override
     protected void init() {
         context = this;
+        EventBus.getDefault().register(this);
+        readVoiceIntentExtras(getIntent());
         epgStringAddress = getConfiguredEpgAddress();
 
         setLoadSir(findViewById(R.id.live_root));
@@ -1348,6 +1362,7 @@ public class LivePlayActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        EventBus.getDefault().unregister(this);
         Hawk.put(HawkConfig.PLAYER_IS_LIVE, false);
         hideSwitchChannelSnapshot();
         if (mVideoView != null) {
@@ -1905,6 +1920,116 @@ public class LivePlayActivity extends BaseActivity {
         if (!isCurrentLiveChannelValid()) return;
         currentLiveChannelItem.nextSource();
         playChannel(currentChannelGroupIndex, currentLiveChannelIndex, true);
+    }
+
+    // ==================== 语音换台 ====================
+
+    /** 语音指令: 换台/上下台/暂停继续(由VoiceCommandManager通过EventBus分发) */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onVoiceCommand(VoiceEvent event) {
+        VoiceCommand cmd = event.command;
+        if (cmd == null) return;
+        switch (cmd.type) {
+            case VoiceCommand.TYPE_LIVE_NEXT:
+                playNext();
+                break;
+            case VoiceCommand.TYPE_LIVE_PREV:
+                playPrevious();
+                break;
+            case VoiceCommand.TYPE_LIVE_CHANNEL_BY_NAME:
+                switchToChannelByName(cmd.keyword);
+                break;
+            case VoiceCommand.TYPE_LIVE_CHANNEL_BY_NUMBER:
+                switchToChannelByNumber(cmd.number);
+                break;
+            case VoiceCommand.TYPE_PLAY_PAUSE:
+                if (mVideoView != null) mVideoView.pause();
+                break;
+            case VoiceCommand.TYPE_PLAY_RESUME:
+                if (mVideoView != null) mVideoView.resume();
+                break;
+        }
+    }
+
+    /** 语音换台: 按频道名切换, 支持别名(中央一台→CCTV1)与模糊匹配 */
+    public boolean switchToChannelByName(String keyword) {
+        Integer[] groupChannelIndex = findChannelByVoiceKeyword(keyword);
+        if (groupChannelIndex == null) {
+            Toast.makeText(App.getInstance(), "没有找到频道: " + keyword, Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        return playChannel(groupChannelIndex[0], groupChannelIndex[1], false);
+    }
+
+    /** 语音换台: 按全量频道序号切换(跳过加密分组, 从1开始) */
+    public boolean switchToChannelByNumber(int number) {
+        if (number < 1) return false;
+        int count = 0;
+        for (LiveChannelGroup liveChannelGroup : liveChannelGroupList) {
+            if (liveChannelGroup == null || isNeedInputPassword(liveChannelGroup.getGroupIndex())) continue;
+            ArrayList<LiveChannelItem> groupChannels = liveChannelGroup.getLiveChannels();
+            if (groupChannels == null || groupChannels.isEmpty()) continue;
+            count += groupChannels.size();
+            if (number <= count) {
+                return playChannel(liveChannelGroup.getGroupIndex(), groupChannels.get(number - (count - groupChannels.size()) - 1).getChannelIndex(), false);
+            }
+        }
+        Toast.makeText(App.getInstance(), "没有第" + number + "台, 共" + count + "个频道", Toast.LENGTH_SHORT).show();
+        return false;
+    }
+
+    private Integer[] findChannelByVoiceKeyword(String keyword) {
+        String normKeyword = VoiceCommandParser.normalizeChannelKeyword(keyword);
+        if (TextUtils.isEmpty(normKeyword)) return null;
+        // 1) 归一化全等匹配
+        Integer[] exact = matchChannel(normKeyword, true);
+        if (exact != null) return exact;
+        // 2) 归一化包含匹配
+        Integer[] contains = matchChannel(normKeyword, false);
+        if (contains != null) return contains;
+        // 3) 兜底: 原始包含匹配(与遥控器数字输入逻辑一致)
+        return getFirstChannelByName(keyword);
+    }
+
+    private Integer[] matchChannel(String normKeyword, boolean exact) {
+        for (LiveChannelGroup liveChannelGroup : liveChannelGroupList) {
+            if (liveChannelGroup == null || isNeedInputPassword(liveChannelGroup.getGroupIndex())) continue;
+            ArrayList<LiveChannelItem> groupChannels = liveChannelGroup.getLiveChannels();
+            if (groupChannels == null || groupChannels.isEmpty()) continue;
+            for (LiveChannelItem item : groupChannels) {
+                if (item == null || TextUtils.isEmpty(item.getChannelName())) continue;
+                String normName = VoiceCommandParser.normalizeChannelKeyword(item.getChannelName());
+                boolean matched = exact ? normName.equals(normKeyword) : normName.contains(normKeyword);
+                if (matched) {
+                    return new Integer[]{liveChannelGroup.getGroupIndex(), item.getChannelIndex()};
+                }
+            }
+        }
+        return null;
+    }
+
+    /** 读取语音入口拉起直播页时携带的目标频道 */
+    private void readVoiceIntentExtras(Intent intent) {
+        if (intent == null || intent.getExtras() == null) return;
+        pendingVoiceChannelName = intent.getStringExtra("voiceChannelName");
+        pendingVoiceChannelNumber = intent.getIntExtra("voiceChannelNumber", -1);
+        pendingVoiceChannelAction = intent.getStringExtra("voiceChannelAction");
+    }
+
+    /** 频道列表就绪后执行待处理的语音指令 */
+    private void applyPendingVoiceCommand() {
+        if (!TextUtils.isEmpty(pendingVoiceChannelName)) {
+            switchToChannelByName(pendingVoiceChannelName);
+        } else if (pendingVoiceChannelNumber >= 0) {
+            switchToChannelByNumber(pendingVoiceChannelNumber);
+        } else if ("next".equals(pendingVoiceChannelAction)) {
+            playNext();
+        } else if ("prev".equals(pendingVoiceChannelAction)) {
+            playPrevious();
+        }
+        pendingVoiceChannelName = null;
+        pendingVoiceChannelNumber = -1;
+        pendingVoiceChannelAction = null;
     }
 
     //显示设置列表
@@ -3058,6 +3183,7 @@ public class LivePlayActivity extends BaseActivity {
         liveChannelGroupAdapter.setNewData(new ArrayList<>(liveChannelGroupList));
         currentLiveChannelIndex = -1;
         selectChannelGroup(lastChannelGroupIndex, false, lastLiveChannelIndex);
+        applyPendingVoiceCommand();
     }
 
     private boolean isListOrSettingLayoutVisible() {

@@ -54,6 +54,7 @@ import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.cache.CacheManager;
 import com.github.tvbox.osc.dlna.CastVideo;
 import com.github.tvbox.osc.event.RefreshEvent;
+import com.github.tvbox.osc.event.VoiceEvent;
 import com.github.tvbox.osc.player.ExoPlayer;
 import com.github.tvbox.osc.player.IjkMediaPlayer;
 import com.github.tvbox.osc.player.MyVideoView;
@@ -68,6 +69,7 @@ import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.ui.dialog.CastDeviceDialog;
 import com.github.tvbox.osc.ui.dialog.DanmuSettingDialog;
 import com.github.tvbox.osc.ui.dialog.EpisodeDialog;
+import com.github.tvbox.osc.voice.VoiceCommand;
 import com.github.tvbox.osc.ui.dialog.SearchDanmuDialog;
 import com.github.tvbox.osc.ui.dialog.SearchSubtitleDialog;
 import com.github.tvbox.osc.ui.dialog.SelectDialog;
@@ -181,6 +183,64 @@ public class PlayFragment extends BaseLazyFragment {
         } else if (event.type == RefreshEvent.TYPE_DANMU_REFRESH) {
             checkDanmu(event.obj instanceof String ? (String) event.obj : "");
         }
+    }
+
+    /** 语音指令: 换剧集/暂停继续/快进快退(由VoiceCommandManager通过EventBus分发) */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onVoiceCommand(VoiceEvent event) {
+        VoiceCommand cmd = event.command;
+        if (cmd == null) return;
+        switch (cmd.type) {
+            case VoiceCommand.TYPE_EPISODE_NEXT:
+                playNext(false);
+                break;
+            case VoiceCommand.TYPE_EPISODE_PREV:
+                playPrevious();
+                break;
+            case VoiceCommand.TYPE_EPISODE_GOTO:
+                gotoEpisode(cmd.number);
+                break;
+            case VoiceCommand.TYPE_PLAY_PAUSE:
+                if (mVideoView != null) mVideoView.pause();
+                break;
+            case VoiceCommand.TYPE_PLAY_RESUME:
+                if (mVideoView != null) mVideoView.resume();
+                break;
+            case VoiceCommand.TYPE_SEEK_FORWARD:
+            case VoiceCommand.TYPE_SEEK_BACK:
+                seekBy(cmd.type == VoiceCommand.TYPE_SEEK_FORWARD ? cmd.number : -cmd.number);
+                break;
+        }
+    }
+
+    /** 语音换剧集: 跳到第N集(1开始) */
+    private void gotoEpisode(int episodeNumber) {
+        if (!isAdded()) return;
+        if (mVodInfo == null || mVodInfo.seriesMap == null || TextUtils.isEmpty(mVodInfo.playFlag)) {
+            Toast.makeText(requireContext(), "当前没有可选剧集", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<VodInfo.VodSeries> episodes = mVodInfo.seriesMap.get(mVodInfo.playFlag);
+        if (episodes == null || episodes.isEmpty()) return;
+        int target = episodeNumber - 1;
+        if (target < 0 || target >= episodes.size()) {
+            Toast.makeText(requireContext(), "没有第" + episodeNumber + "集, 共" + episodes.size() + "集", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        triedLineFlags.clear();
+        mVodInfo.playIndex = target;
+        reusePlayerOnSwitch = true;
+        play(false);
+    }
+
+    /** 语音快进快退: 相对当前位置跳转N秒 */
+    private void seekBy(int seconds) {
+        if (mVideoView == null || seconds == 0) return;
+        long duration = mVideoView.getDuration();
+        long target = mVideoView.getCurrentPosition() + seconds * 1000L;
+        if (duration > 0) target = Math.min(Math.max(target, 0), duration);
+        else target = Math.max(target, 0);
+        mVideoView.seekTo(target);
     }
 
     @Override
