@@ -25,7 +25,7 @@ public class VoiceCommandParser {
 
     // ---- 直播换台 ----
     private static final Pattern P_LIVE_PREV = Pattern.compile("^(上一个台|上个台|上一台|上个频道|上一频道|后退一个台|换回上一个台)$");
-    private static final Pattern P_LIVE_NEXT = Pattern.compile("^(下一个台|下个台|下一台|下个频道|下一频道|换台|切台|换个台|切下一个台)$");
+    private static final Pattern P_LIVE_NEXT = Pattern.compile("^(下一个台|下个台|下一台|下个频道|下一频道|换台|切台|换个台|换一台|换频道|换个频道|切下一个台)$");
     private static final Pattern P_LIVE_NUMBER = Pattern.compile("^第([0-9]+)台$");
     private static final Pattern P_DIGITS = Pattern.compile("^[0-9]+$");
 

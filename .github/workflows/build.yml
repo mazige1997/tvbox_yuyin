@@ -38,6 +38,9 @@ jobs:
       - name: 编译 java 各flavor (universal双ABI / java32位 / java64位)
         run: ./gradlew :app:assembleJavaDebug :app:assembleJavaRelease :app:assembleJava32Release :app:assembleJava64Release --stacktrace
 
+      - name: 编译 xjsync版 (包名=com.onbon.svr_main, 夏杰DEVICE_SCENE白名单内, 绕过派发限制)
+        run: ./gradlew :app:assembleJavaRelease :app:assembleJava32Release :app:assembleJava64Release -PSPOOF_PKG=com.onbon.svr_main --stacktrace
+
       - name: 列出产物
         run: ls -lhR app/build/outputs/apk/
 

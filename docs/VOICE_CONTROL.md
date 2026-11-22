@@ -171,6 +171,12 @@ TVBox启动 ──动态注册(直播0x4|影视0x8组合场景, 广播+服务双
 > (代码: f7687f非空时 f(pkg)=contains(pkg))。当前清单(20251211版)仅含5个合作应用包名
 > (com.peasun.serial/com.xinzeyu.boxlauncher/com.onbon.svr_main/cn.sinjet.sinjetservice/com.sharjeck.device),
 > TVBox需联系夏杰作者加入清单后方可使用自定义场景关键词; 清单外的说法走直播/影视内置场景, 不受此限制。
+> **临时方案(已实测有效)**: 每次CI额外编译包名=com.onbon.svr_main(白名单内)的 xjsync 版本
+> (产物名带-xjsync后缀, 与正式版共存), 装它即可立即使用全部自定义关键词换台;
+> 正式包名加入服务器清单后即可切回正式版。""
+"
+> **白名单已实测证实(2026-11-22)**: 相同代码以白名单内包名(com.onbon.svr_main)安装,
+> 说"换一台"即收到 action.device.scene 派发(TVBox日志可见); 以正式包名安装则零派发。
 
 夏杰语音有自己的语法, **不是所有自然说法都能识别**("换台到CCTV5"会回复"没学会", 因"换台到"不在其动词剥离列表):
 
