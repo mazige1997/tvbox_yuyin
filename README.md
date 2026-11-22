@@ -47,3 +47,10 @@
         深链:  tvbox://voice?text=<语音文本>   (夏杰语音AI智能体/自定义指令"打开网址")
         标准:  MEDIA_PLAY_FROM_SEARCH / GLOBAL_SEARCH 等系统搜索intent已自动兼容
     各类语音服务接入步骤与指令清单见 docs/VOICE_CONTROL.md
+
+=== 自动编译(GitHub Actions) ===
+
+    push到master/main / 打v*标签 / 手动触发 时自动编译:
+    - java flavor(debug+release, 双ABI) 上传artifact: TVBox-java-apk
+    - python flavor(release, 需Chaquopy+Python3.8) artifact: TVBox-python-apk
+    release APK未签名, 安装前需自行签名; debug APK可直接安装
