@@ -115,8 +115,14 @@ android {
     applicationVariants.configureEach { variant ->
         variant.outputs.configureEach { output ->
             def flavorNames = variant.productFlavors.collect { it.name }.join('-')
-            // 构建自定义文件名
-            def fileName = "TVBox_${variant.buildType.name}-${flavorNames}.apk"
+            // ABI标识: flavor名含32=32位专用, 含64=64位专用, 其余为32+64合并通用包
+            def abiTag = "universal"
+            if (flavorNames.contains("32")) {
+                abiTag = "arm32"
+            } else if (flavorNames.contains("64")) {
+                abiTag = "arm64"
+            }
+            def fileName = "TVBox_${variant.buildType.name}-${flavorNames}-${abiTag}.apk"
             outputFileName = fileName
         }
     }
