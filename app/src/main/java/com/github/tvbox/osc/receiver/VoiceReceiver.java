@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.text.TextUtils;
 
 import com.github.tvbox.osc.voice.VoiceCommandManager;
+import com.github.tvbox.osc.voice.VoiceLogManager;
+import com.google.gson.JsonObject;
 
 /**
  * 语音指令广播入口。
@@ -35,9 +37,20 @@ public class VoiceReceiver extends BroadcastReceiver {
                 || ACTION_WEB_SEARCH.equals(act)
                 || ACTION_MEDIA_PLAY_FROM_SEARCH.equals(act);
         if (!accepted) return;
+        // 标准系统搜索intent来自电视/投影仪/盒子自带原厂语音服务, 记录语音调用日志;
+        // 自定义广播(com.github.tvbox.osc.VOICE_COMMAND)是通用外部工具通道, 不记录。
+        boolean builtinVoice = !action.equals(act);
         String text = pickText(intent);
         if (!TextUtils.isEmpty(text)) {
-            VoiceCommandManager.get().handle(context, text.trim());
+            text = text.trim();
+            if (builtinVoice) {
+                JsonObject result = VoiceCommandManager.get().handle(context, text);
+                VoiceLogManager.get().record(VoiceLogManager.SOURCE_TV_BUILTIN, act, text, result);
+            } else {
+                VoiceCommandManager.get().handle(context, text);
+            }
+        } else if (builtinVoice) {
+            VoiceLogManager.get().recordMissing(VoiceLogManager.SOURCE_TV_BUILTIN, act);
         }
     }
 
