@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- 夏杰语音AIOpen对接权限(官方对接文档要求) -->
+    <uses-permission android:name="com.peasun.aispeech.aiopen.control" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -97,6 +99,26 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- 夏杰语音AIOpen对接: 指令接收服务与广播(按官方对接文档V1.2/V1.4) -->
+        <service
+            android:name=".voice.sharjeck.SharjeckService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.peasun.aispeech.action.app.register.require" />
+                <action android:name="com.peasun.aispeech.action.live" />
+                <action android:name="com.peasun.aispeech.action.video" />
+            </intent-filter>
+        </service>
+        <receiver
+            android:name=".voice.sharjeck.SharjeckReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.peasun.aispeech.action.app.register.require" />
+                <action android:name="com.peasun.aispeech.action.live" />
+                <action android:name="com.peasun.aispeech.action.video" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".dlna.DLNACastService"

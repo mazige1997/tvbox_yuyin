@@ -157,6 +157,8 @@ public class HomeActivity extends BaseActivity {
         EventBus.getDefault().register(this);
         eventBusRegistered = true;
         ControlManager.get().startServer();
+        // 夏杰语音动态注册(直播换台+影视搜索控制), 安装了夏杰语音即可语音控制本应用
+        com.github.tvbox.osc.voice.sharjeck.AIOpenRegister.registerAll(this);
         initView();
         initViewModel();
         useCacheConfig = false;
