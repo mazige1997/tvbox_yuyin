@@ -66,5 +66,6 @@ public class HawkConfig {
     public static final String DANMU_SIZE_SCALE = "danmu_size_scale";
     public static final String DANMU_RANDOM_COLOR = "danmu_random_color";
     public static final String DANMU_API = "danmu_api";
+    public static final String VOICE_CONTROL = "voice_control"; //语音控制总开关(夏杰语音/音箱/广播/深链)
     public static boolean hotVodDelete;
 }

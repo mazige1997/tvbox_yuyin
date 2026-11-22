@@ -10,6 +10,8 @@ import android.os.Bundle;
 import android.text.TextUtils;
 
 import com.github.tvbox.osc.event.VoiceEvent;
+import com.github.tvbox.osc.util.HawkConfig;
+import com.orhanobut.hawk.Hawk;
 import com.github.tvbox.osc.receiver.SearchReceiver;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.ui.activity.LivePlayActivity;
@@ -65,6 +67,12 @@ public class VoiceCommandManager {
         if (!TextUtils.isEmpty(cmd.keyword)) cmdJson.addProperty("keyword", cmd.keyword);
         if (cmd.number >= 0) cmdJson.addProperty("number", cmd.number);
         result.add("command", cmdJson);
+        // 语音控制总开关(设置页可开关)
+        if (!Hawk.get(HawkConfig.VOICE_CONTROL, true)) {
+            result.addProperty("code", 1);
+            result.addProperty("msg", "语音控制已关闭, 请到 设置-配置中心 开启");
+            return result;
+        }
         String msg;
         try {
             msg = dispatch(context.getApplicationContext(), cmd);

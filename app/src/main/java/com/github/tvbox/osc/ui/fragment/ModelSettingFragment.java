@@ -102,6 +102,7 @@ public class ModelSettingFragment extends BaseLazyFragment {
     private boolean selectLocalLive;
     private TextView tvDanmuOpenText;
     private TextView tvDanmuApiText;
+    private TextView tvVoiceControlText;
 
     public static ModelSettingFragment newInstance() {
         return new ModelSettingFragment().setArguments();
@@ -126,6 +127,8 @@ public class ModelSettingFragment extends BaseLazyFragment {
         tvDanmuOpenText.setText(DanmuHelper.isOpen() ? "开启" : "关闭");
         tvDanmuApiText = findViewById(R.id.danmuApiText);
         refreshDanmuApiText();
+        tvVoiceControlText = findViewById(R.id.tvVoiceControlText);
+        refreshVoiceControlText();
         tvAutoSwitchLineText = findViewById(R.id.autoSwitchLineText);
         tvAutoSwitchLineText.setText(Hawk.get(HawkConfig.AUTO_SWITCH_LINE, true) ? "开启" : "关闭");
         tvRecStyleText = findViewById(R.id.showRecStyleText);
@@ -168,6 +171,19 @@ public class ModelSettingFragment extends BaseLazyFragment {
         tvIjkCachePlay.setText(Hawk.get(HawkConfig.IJK_CACHE_PLAY, false) ? "开启" : "关闭");
         tvHomeDefaultShow = findViewById(R.id.tvHomeText);
         tvHomeDefaultShow.setText(Hawk.get(HawkConfig.DEFAULT_LOAD_LIVE, false) ? "直播" : "点播");
+        findViewById(R.id.llVoiceControl).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FastClickCheckUtil.check(v);
+                boolean enabled = !Hawk.get(HawkConfig.VOICE_CONTROL, true);
+                Hawk.put(HawkConfig.VOICE_CONTROL, enabled);
+                refreshVoiceControlText();
+                if (enabled) {
+                    // 重新向夏杰语音注册场景
+                    com.github.tvbox.osc.voice.sharjeck.AIOpenRegister.registerAll(requireContext());
+                }
+            }
+        });
         findViewById(R.id.llDebug).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -865,6 +881,11 @@ public class ModelSettingFragment extends BaseLazyFragment {
             }
         }
         tvApiLine.setText(lineName);
+    }
+
+    private void refreshVoiceControlText() {
+        if (tvVoiceControlText == null) return;
+        tvVoiceControlText.setText(Hawk.get(HawkConfig.VOICE_CONTROL, true) ? "开启" : "关闭");
     }
 
     private void refreshDanmuApiText() {
