@@ -525,7 +525,7 @@ public class FastSearchActivity extends BaseActivity {
         if (number <= 0 || searchAdapter.getData().isEmpty()) return;
         pendingVoicePlayIndex = Math.min(number, searchAdapter.getData().size());
         if (number > searchAdapter.getData().size()) {
-            Toast.makeText(requireContext(), "搜索结果只有" + searchAdapter.getData().size() + "个, 选择最后一个", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "搜索结果只有" + searchAdapter.getData().size() + "个, 选择最后一个", Toast.LENGTH_SHORT).show();
         }
         checkPendingVoicePlayIndex();
     }
