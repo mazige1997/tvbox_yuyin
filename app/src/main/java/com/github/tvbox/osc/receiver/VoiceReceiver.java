@@ -23,6 +23,7 @@ public class VoiceReceiver extends BroadcastReceiver {
     private static final String ACTION_SEARCH = "android.intent.action.SEARCH";
     private static final String ACTION_GLOBAL_SEARCH = "android.search.action.GLOBAL_SEARCH";
     private static final String ACTION_WEB_SEARCH = "android.intent.action.WEB_SEARCH";
+    private static final String ACTION_MEDIA_PLAY_FROM_SEARCH = "android.media.action.MEDIA_PLAY_FROM_SEARCH";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -31,7 +32,8 @@ public class VoiceReceiver extends BroadcastReceiver {
         boolean accepted = action.equals(act)
                 || ACTION_SEARCH.equals(act)
                 || ACTION_GLOBAL_SEARCH.equals(act)
-                || ACTION_WEB_SEARCH.equals(act);
+                || ACTION_WEB_SEARCH.equals(act)
+                || ACTION_MEDIA_PLAY_FROM_SEARCH.equals(act);
         if (!accepted) return;
         String text = pickText(intent);
         if (!TextUtils.isEmpty(text)) {

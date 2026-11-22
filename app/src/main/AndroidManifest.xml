@@ -91,6 +91,11 @@
                 <data android:scheme="tvbox" android:host="voice" />
                 <data android:scheme="tvbox" android:host="search" />
             </intent-filter>
+            <!-- Android标准媒体搜索协议: 电视自带语音服务(Google TV全局搜索等)"用本应用播放X"时唤起 -->
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <service
@@ -132,6 +137,7 @@
                 <action android:name="android.intent.action.SEARCH" />
                 <action android:name="android.search.action.GLOBAL_SEARCH" />
                 <action android:name="android.intent.action.WEB_SEARCH" />
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
             </intent-filter>
         </receiver>
 
