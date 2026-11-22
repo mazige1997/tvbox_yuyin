@@ -21,6 +21,7 @@ import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.OkGoHelper;
 import com.github.tvbox.osc.util.Proxy;
 import com.github.tvbox.osc.voice.VoiceCommandManager;
+import com.github.tvbox.osc.voice.VoiceLogManager;
 import com.google.gson.JsonArray;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -214,6 +215,8 @@ public class RemoteServer extends NanoHTTPD {
                     return handleMedia();
                 } else if (fileName.equals("/voice")) {
                     return handleVoice(session.getParms());
+                } else if (fileName.equals("/voiceLog")) {
+                    return handleVoiceLog(session.getParms());
                 }  else if (fileName.startsWith("/proxyM3u8")) {
 //                    com.github.tvbox.osc.util.LOG.i("echo-proxyM3u8 length:" + (m3u8Content == null ? 0 : m3u8Content.length()));
                     return NanoHTTPD.newFixedLengthResponse(Response.Status.OK, "application/vnd.apple.mpegurl", m3u8Content == null ? "" : m3u8Content);
@@ -446,6 +449,24 @@ public class RemoteServer extends NanoHTTPD {
         }
         JsonObject result = VoiceCommandManager.get().handle(mContext, text.trim());
         return createJSONResponse(Response.Status.OK, result.toString());
+    }
+
+    /**
+     * 语音调用日志查看(仅含电视原厂语音/夏杰语音通道的调用, 范围见VoiceLogManager):
+     * GET /voiceLog             → JSON数组(时间倒序)
+     * GET /voiceLog?format=text → 纯文本
+     * GET /voiceLog?clear=1     → 清空日志
+     */
+    private Response handleVoiceLog(Map<String, String> params) {
+        String clear = params == null ? null : params.get("clear");
+        if (!TextUtils.isEmpty(clear) && !"0".equals(clear)) {
+            VoiceLogManager.get().clear();
+            return createJSONResponse(Response.Status.OK, "{\"code\":0,\"msg\":\"语音日志已清空\"}");
+        }
+        if ("text".equals(params == null ? null : params.get("format"))) {
+            return createPlainTextResponse(Response.Status.OK, VoiceLogManager.get().toText());
+        }
+        return createJSONResponse(Response.Status.OK, VoiceLogManager.get().toJsonArray().toString());
     }
 
     private void handleRefreshAction(Map<String, String> params) {

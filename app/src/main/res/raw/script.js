@@ -15,6 +15,11 @@ function voice() {
     return false;
 }
 
+function voiceLog() {
+    window.open('/voiceLog?format=text');
+    return false;
+}
+
 function api() {
     doAction('api', { url: $('#diy_api_url').val() });
 }
