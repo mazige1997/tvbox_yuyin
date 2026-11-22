@@ -24,12 +24,13 @@
 
 ## 二、统一语音入口
 
-三条入口最终都汇聚到 `VoiceCommandManager`(解析: `VoiceCommandParser`, 事件分发: `VoiceEvent`):
+所有入口最终都汇聚到 `VoiceCommandManager`(解析: `VoiceCommandParser`, 事件分发: `VoiceEvent`):
 
 ```
 小爱音箱/天猫精灵/小度 ──云技能──► 你的技能服务端 ──HTTP──► http://<TVBox IP>:9978/voice?text=...
-电视端内置语音助手 ──intent──► VoiceReceiver(广播)
-手机遥控App / Home Assistant ──广播或HTTP──► 同上
+夏杰语音 ──AI智能体/自定义指令(打开网址)──► tvbox://voice?text=...
+电视自带语音服务 ──标准搜索intent──► VoiceEntryActivity / VoiceReceiver
+手机遥控App / Home Assistant ──广播──► am broadcast -a com.github.tvbox.osc.VOICE_COMMAND
 网页遥控(http://<IP>:9978/) ──语音指令输入框──► POST /action?do=voice
 ```
 
@@ -130,7 +131,70 @@ app.listen(8080);
 
 > 三家平台均需实名/审核, 并按各自规范填写服务端地址与返回报文; 服务端只需做一件事——把语音文本原样转给 `http://<TVBox IP>:9978/voice?text=<文本>`。
 
-## 四、执行逻辑说明
+## 四、夏杰语音接入
+
+[夏杰语音](http://app.shafa.com/apk/xiajieyuyin.html)是电视端即装即用的AI语音助手(支持20多种方言、内置AI大模型), **没有自带语音服务的电视/盒子可安装它**。它通过遥控器语音键采集音频→识别成文本→分发指令执行。TVBox 已预留三种对接通道:
+
+### 方式1(推荐): AI智能体/自定义指令 + 深链
+
+在夏杰语音中创建自定义指令/AI智能体(语音说一句话 → 执行"打开网址"):
+
+| 语音说法 | 执行动作(打开网址) |
+| --- | --- |
+| "播放狂飙" | `tvbox://voice?text=搜索狂飙` |
+| "换到CCTV5" | `tvbox://voice?text=换台到CCTV5` |
+| "下一集" | `tvbox://voice?text=下一集` |
+| "暂停" | `tvbox://voice?text=暂停` |
+
+TVBox 收到深链后立即解析执行并自动退出入口页。搜索/换台/换剧集/播放控制全部可用。
+
+### 方式2: 执行命令广播
+
+若使用夏杰语音的"执行命令/终端指令"能力, 可直接发广播:
+
+```
+am broadcast -a com.github.tvbox.osc.VOICE_COMMAND --es text "搜索狂飙"
+```
+
+### 方式3: 语音唤起 + 标准搜索intent
+
+直接说"打开TVBox搜索狂飙"。夏杰语音识别后会拉起应用并以标准搜索 intent(`SEARCH`/`GLOBAL_SEARCH`/`WEB_SEARCH`/`MEDIA_PLAY_FROM_SEARCH`)或语音输入法把文本送进 TVBox, 两条路径均已兼容。
+
+### 验证(无需夏杰语音先自测)
+
+```bash
+adb shell am start -a android.intent.action.VIEW -d "tvbox://voice?text=搜索狂飙"
+adb shell am start -a android.intent.action.VIEW -d "tvbox://search?word=狂飙"
+```
+
+## 五、电视自带语音服务接入
+
+小米电视(小爱)、天猫魔盒、海信(小聚)、创维(小维)、TCL(小T)、长虹等电视自带的语音服务, 对第三方 App 的接入程度分两类:
+
+**A. 遵循 Android 标准协议的入口(已自动兼容)**
+
+TVBox 已注册以下标准 intent, 语音助手以任一方式分发均可到达:
+
+| intent | 用途 |
+| --- | --- |
+| `android.media.action.MEDIA_PLAY_FROM_SEARCH` | "用TVBox播放狂飙"(Android官方媒体搜索协议) |
+| `android.search.action.GLOBAL_SEARCH` | Android TV 全局搜索分发 |
+| `android.intent.action.SEARCH` / `WEB_SEARCH` | 常规搜索唤起 |
+| `com.github.tvbox.osc.VOICE_COMMAND`(广播) | 自定义指令广播 |
+
+搜索词兼容 extras/URI 参数: `text`/`query`/`word`/`keyword`/`title`。
+
+**B. 封闭型助手(只搜自家内容源)的桥接方法**
+
+海信小聚/创维小维/TCL小T等把语音结果优先导向自家聚合平台, 不对第三方开放搜索分发。可行做法:
+
+1. 在电视语音助手的**自定义指令/场景**里配置"打开网址": `tvbox://voice?text=<语音文本>`(与夏杰语音方式1相同);
+2. 或走云技能方案(见第三节), 音箱与电视通用;
+3. 或用手机遥控App/Home Assistant 发自定义广播(见第二节广播入口)。
+
+> 注: 各厂商语音对第三方应用的支持因型号/系统版本而异, 以实际设备为准; 标准协议入口无需任何配置即已生效。
+
+## 六、执行逻辑说明
 
 | 指令 | 条件 | 行为 |
 | --- | --- | --- |
@@ -142,16 +206,17 @@ app.listen(8080);
 | 暂停/继续 | 直播或点播页 | VideoView 暂停/恢复 |
 | 音量/静音 | 任意界面 | AudioManager 调节 |
 
-## 五、网页遥控测试
+## 七、网页遥控测试
 
 无需音箱即可联调: 手机浏览器打开 `http://<TVBox IP>:9978/`, 搜索栏下方新增了**语音指令**输入框, 输入 `换台到CCTV5`、`第12集` 等点"发送"即可走与音箱完全相同的链路。
 
-## 六、源码位置
+## 八、源码位置
 
 - 解析器: `app/src/main/java/com/github/tvbox/osc/voice/VoiceCommandParser.java`
-- 调度中心: `app/src/main/java/com/github/tvbox/osc/voice/VoiceCommandManager.java`
+- 调度中心: `app/src/main/java/com/github/tvbox/osc/voice/VoiceCommandManager.java`(含 extractText 文本提取)
 - 指令模型/事件: `voice/VoiceCommand.java`、`event/VoiceEvent.java`
 - 直播语音执行: `ui/activity/LivePlayActivity.java`(`onVoiceCommand`)
 - 点播语音执行: `ui/fragment/PlayFragment.java`(`onVoiceCommand`)
 - HTTP 入口: `server/RemoteServer.java`(`/voice`)、`server/InputRequestProcess.java`(`do=voice`)
 - 广播入口: `receiver/VoiceReceiver.java`
+- 深链入口: `ui/activity/VoiceEntryActivity.java`(`tvbox://voice` / `tvbox://search`)

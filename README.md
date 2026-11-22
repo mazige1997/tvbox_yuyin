@@ -37,10 +37,12 @@
 	]
     }
 
-=== 语音控制(小爱音箱/天猫精灵/小度) ===
+=== 语音控制(小爱音箱/天猫精灵/小度/夏杰语音/电视自带语音) ===
 
     支持语音搜索/语音换台(电视直播)/语音换剧集/播放控制
     统一语音入口:
         HTTP:  http://<TVBox IP>:9978/voice?text=<语音文本>
         广播:  am broadcast -a com.github.tvbox.osc.VOICE_COMMAND --es text "<语音文本>"
-    三大音箱云技能接入步骤与指令清单见 docs/VOICE_CONTROL.md
+        深链:  tvbox://voice?text=<语音文本>   (夏杰语音AI智能体/自定义指令"打开网址")
+        标准:  MEDIA_PLAY_FROM_SEARCH / GLOBAL_SEARCH 等系统搜索intent已自动兼容
+    各类语音服务接入步骤与指令清单见 docs/VOICE_CONTROL.md
