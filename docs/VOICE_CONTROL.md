@@ -131,41 +131,51 @@ app.listen(8080);
 
 > 三家平台均需实名/审核, 并按各自规范填写服务端地址与返回报文; 服务端只需做一件事——把语音文本原样转给 `http://<TVBox IP>:9978/voice?text=<文本>`。
 
-## 四、夏杰语音接入
+## 四、夏杰语音接入(AIOpen动态对接)
 
-[夏杰语音](http://app.shafa.com/apk/xiajieyuyin.html)是电视端即装即用的AI语音助手(支持20多种方言、内置AI大模型), **没有自带语音服务的电视/盒子可安装它**。它通过遥控器语音键采集音频→识别成文本→分发指令执行。TVBox 已预留三种对接通道:
+[夏杰语音](http://app.shafa.com/apk/xiajieyuyin.html)是电视端即装即用的AI语音助手(支持20多种方言、内置AI大模型), **没有自带语音服务的电视/盒子可安装它**(当贝市场可下载)。TVBox 已按官方对接协议(`com.peasun.aispeech.aiopen`, 依据官方 LiveTVDemo/VideoDemo 源码与对接文档 V1.2/V1.4)完成动态对接, **运行本应用即自动注册到夏杰语音, 无需任何配置**:
 
-### 方式1(推荐): AI智能体/自定义指令 + 深链
+### 工作机制
 
-在夏杰语音中创建自定义指令/AI智能体(语音说一句话 → 执行"打开网址"):
+```
+TVBox启动 ──动态注册(直播场景0x4 + 影视场景0x8)──► 夏杰语音(com.peasun.aispeech, 国际版aispeechgl同时注册)
+夏杰语音识别"换到CCTV5/播放狂飙/下一集" ──分发指令──► TVBox SharjeckService/SharjeckReceiver
+                                                    └─► 直播换台/搜索/换剧集/播放控制
+```
+
+- **语音换台**: 说"换到CCTV5""广东卫视""频道8", 夏杰语音直接分发标准频道名/频道号到 TVBox 直播页自动切换(电视不在直播页会自动拉起直播页再切换)
+- **语音搜索**: 说"搜索狂飙"或"播放狂飙第1个", 分发关键词+PlayIndex, TVBox 搜索并自动播放第N个结果
+- **播放控制**: 下一集/上一集/重播/播放/暂停/快进快退N秒/跳到指定秒/退出
+- **手机控制/微信小程序/智能音箱**: 夏杰语音自身支持的控制入口均可使用(见其官方说明)
+
+### 协议细节(TVBox 已实现)
+
+| 项目 | 说明 |
+| --- | --- |
+| 动态注册 | 启动时向夏杰语音 startService `com.peasun.aispeech.action.app.register`, extras: package_name + category(直播0x4/影视0x8) |
+| 重新注册 | 夏杰语音广播 `app.register.require` → TVBox 静态接收器自动响应(应用未运行也能收到) |
+| 换台指令 | service/broadcast `com.peasun.aispeech.action.live`: common=search + keyword=标准频道名称或频道号 |
+| 影视指令 | `com.peasun.aispeech.action.video`: common=search(keyword/PlayIndex) 或 common=control(ToNext/ToPre/Replay/Play/Pause/Exit/Return + FastForward/FastBackward/SeekTo秒) |
+| 暂不支持 | Fullscreen/ExitFullscreen(本应用恒为全屏)、PrePage/NextPage(无全局翻页概念) |
+
+### 前提与验证
+
+1. 电视/盒子上安装夏杰语音(当贝市场), 电视与夏杰语音均正常运行;
+2. 运行 TVBox(启动即注册), 之后对夏杰语音说"打开TVBox"或直接说换台/搜片指令;
+3. 日志验证: `adb logcat -s TVBox-runtime` 可见 `AIOpenRegister: 已向com.peasun.aispeech注册场景`, 语音指令到达后网页遥控(http://IP:9978/)的"日志"按钮可查看明细(来源: 夏杰语音)。
+
+### 深链方式(备用通道, 仍可用)
+
+若使用的夏杰语音版本较旧或动态注册未生效, 可在其 AI智能体/自定义指令里配置"打开网址"方式:
 
 | 语音说法 | 执行动作(打开网址) |
 | --- | --- |
 | "播放狂飙" | `tvbox://voice?text=搜索狂飙` |
 | "换到CCTV5" | `tvbox://voice?text=换台到CCTV5` |
 | "下一集" | `tvbox://voice?text=下一集` |
-| "暂停" | `tvbox://voice?text=暂停` |
 
-TVBox 收到深链后立即解析执行并自动退出入口页。搜索/换台/换剧集/播放控制全部可用。
-
-### 方式2: 执行命令广播
-
-若使用夏杰语音的"执行命令/终端指令"能力, 可直接发广播:
-
-```
-am broadcast -a com.github.tvbox.osc.VOICE_COMMAND --es text "搜索狂飙"
-```
-
-### 方式3: 语音唤起 + 标准搜索intent
-
-直接说"打开TVBox搜索狂飙"。夏杰语音识别后会拉起应用并以标准搜索 intent(`SEARCH`/`GLOBAL_SEARCH`/`WEB_SEARCH`/`MEDIA_PLAY_FROM_SEARCH`)或语音输入法把文本送进 TVBox, 两条路径均已兼容。
-
-### 验证(无需夏杰语音先自测)
-
-```bash
-adb shell am start -a android.intent.action.VIEW -d "tvbox://voice?text=搜索狂飙"
-adb shell am start -a android.intent.action.VIEW -d "tvbox://search?word=狂飙"
-```
+或执行命令广播: `am broadcast -a com.github.tvbox.osc.VOICE_COMMAND --es text "搜索狂飙"`。
+(注: 深链与自定义广播属通用通道, 不记录语音日志; AIOpen 动态对接的调用会记录。)
 
 ## 五、电视自带语音服务接入
 
@@ -219,7 +229,7 @@ TVBox 已注册以下标准 intent, 语音助手以任一方式分发均可到�
 | 来源 | 触发条件 |
 | --- | --- |
 | 电视原厂语音 | 电视/投影仪/盒子自带语音服务以系统标准搜索intent调用(SEARCH / GLOBAL_SEARCH / WEB_SEARCH / MEDIA_PLAY_FROM_SEARCH, activity或广播) |
-| 夏杰语音 | tvbox://voice / tvbox://search 深链调用 |
+| 夏杰语音 | AIOpen动态对接指令分发(action.live换台/action.video影视控制) 与 tvbox://voice / tvbox://search 深链调用 |
 | 未知来源 | 显式component方式打开 VoiceEntryActivity(如 adb 指定组件名) |
 
 **不记录**: HTTP `/voice` 接口、网页遥控语音输入框、自定义广播 `com.github.tvbox.osc.VOICE_COMMAND`(通用工具通道)。
@@ -250,4 +260,6 @@ TVBox 已注册以下标准 intent, 语音助手以任一方式分发均可到�
 - 点播语音执行: `ui/fragment/PlayFragment.java`(`onVoiceCommand`)
 - HTTP 入口: `server/RemoteServer.java`(`/voice`、`/voiceLog`)、`server/InputRequestProcess.java`(`do=voice`)
 - 广播入口: `receiver/VoiceReceiver.java`
+- 夏杰语音AIOpen对接: `voice/sharjeck/`(AIOpenConstant协议常量、AIOpenRegister动态注册、
+  AIOpenCommandHandler指令处理、SharjeckService指令接收服务、SharjeckReceiver静态广播接收器)
 - 深链入口: `ui/activity/VoiceEntryActivity.java`(`tvbox://voice` / `tvbox://search`)
