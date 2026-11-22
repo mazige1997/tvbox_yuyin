@@ -6,7 +6,11 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 
+import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.LOG;
+import com.github.tvbox.osc.voice.VoiceLogManager;
+import com.google.gson.JsonObject;
+import com.orhanobut.hawk.Hawk;
 
 /**
  * 夏杰语音动态注册。
@@ -21,16 +25,23 @@ import com.github.tvbox.osc.util.LOG;
  */
 public class AIOpenRegister {
 
-    /** 注册全部支持的场景(直播+影视) */
+    /** 注册全部支持的场景(直播+影视, category为位标志合并后一次注册) */
     public static void registerAll(Context context) {
-        register(context, AIOpenConstant.SEMANTIC_LIVE);
-        register(context, AIOpenConstant.SEMANTIC_VIDEO);
+        if (!Hawk.get(HawkConfig.VOICE_CONTROL, true)) {
+            LOG.i("AIOpenRegister: 语音控制已关闭, 跳过注册");
+            VoiceLogManager.get().record(VoiceLogManager.SOURCE_XIAJIE, "AIOpen注册",
+                    "语音控制已关闭, 跳过注册", simpleResult(0, "语音控制已关闭, 跳过注册"));
+            return;
+        }
+        register(context, AIOpenConstant.SEMANTIC_LIVE | AIOpenConstant.SEMANTIC_VIDEO);
     }
 
-    /** 按场景类别注册 */
+    /** 按场景类别注册: 同时走广播与服务两个动态注册接口(广播为老版本兼容通道) */
     public static void register(Context context, long category) {
         for (String pkg : new String[]{AIOpenConstant.PKG_AISPEECH_CN, AIOpenConstant.PKG_AISPEECH_GLOBAL}) {
             if (!isInstalled(context, pkg)) continue;
+            String mode = "无";
+            String err = "";
             try {
                 Intent intent = new Intent(AIOpenConstant.ACTION_APP_REGISTER);
                 Bundle data = new Bundle();
@@ -38,16 +49,41 @@ public class AIOpenRegister {
                 data.putLong(AIOpenConstant.PARAM_CATEGORY, category);
                 intent.putExtras(data);
                 intent.setPackage(pkg);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent);
-                } else {
-                    context.startService(intent);
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        context.startForegroundService(intent);
+                    } else {
+                        context.startService(intent);
+                    }
+                    mode = "service";
+                } catch (Throwable th) {
+                    err = th.getMessage() == null ? th.toString() : th.getMessage();
                 }
-                LOG.i("AIOpenRegister: 已向" + pkg + "注册场景 category=" + category);
-            } catch (Throwable th) {
-                LOG.e("AIOpenRegister: 注册失败 pkg=" + pkg + " category=" + category + " err=" + th.getMessage());
+                try {
+                    context.sendBroadcast(intent);
+                    mode = mode.equals("service") ? "service+broadcast" : "broadcast";
+                } catch (Throwable th) {
+                    err = err.isEmpty() ? (th.getMessage() == null ? th.toString() : th.getMessage()) : err;
+                }
+                LOG.i("AIOpenRegister: pkg=" + pkg + " category=0x" + Long.toHexString(category)
+                        + " mode=" + mode + (err.isEmpty() ? "" : " err=" + err));
+            } finally {
+                JsonObject result = new JsonObject();
+                result.addProperty("code", err.isEmpty() ? 0 : -1);
+                result.addProperty("msg", err.isEmpty()
+                        ? "已向" + pkg + "注册场景(直播+影视), 接口: " + mode
+                        : "向" + pkg + "注册异常: " + err);
+                VoiceLogManager.get().record(VoiceLogManager.SOURCE_XIAJIE, "AIOpen注册",
+                        "category=0x" + Long.toHexString(category), result);
             }
         }
+    }
+
+    private static JsonObject simpleResult(int code, String msg) {
+        JsonObject result = new JsonObject();
+        result.addProperty("code", code);
+        result.addProperty("msg", msg);
+        return result;
     }
 
     private static boolean isInstalled(Context context, String pkg) {

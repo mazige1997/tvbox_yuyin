@@ -46,6 +46,13 @@ public class App extends MultiDexApplication {
         EpgUtil.init();
         // 初始化Web服务器
         ControlManager.init(this);
+        // 夏杰语音AIOpen指令动态广播接收器
+        // (Android 8+隐式广播不会送达manifest静态接收器, 官方demo即采用动态注册, 应用进程存活期间常驻)
+        android.content.IntentFilter aiopenFilter = new android.content.IntentFilter();
+        aiopenFilter.addAction(com.github.tvbox.osc.voice.sharjeck.AIOpenConstant.ACTION_APP_REGISTER_REQUIRE);
+        aiopenFilter.addAction(com.github.tvbox.osc.voice.sharjeck.AIOpenConstant.ACTION_LIVE);
+        aiopenFilter.addAction(com.github.tvbox.osc.voice.sharjeck.AIOpenConstant.ACTION_VIDEO);
+        registerReceiver(new com.github.tvbox.osc.voice.sharjeck.SharjeckReceiver(), aiopenFilter);
         //初始化数据库
         AppDataManager.init();
         LoadSir.beginBuilder()

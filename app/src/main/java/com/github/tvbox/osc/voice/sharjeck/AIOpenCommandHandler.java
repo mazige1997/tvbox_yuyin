@@ -36,12 +36,8 @@ public class AIOpenCommandHandler {
         try {
             switch (action) {
                 case AIOpenConstant.ACTION_APP_REGISTER_REQUIRE: {
-                    long category = data == null ? -1 : data.getLong(AIOpenConstant.PARAM_CATEGORY, -1);
-                    if (category == AIOpenConstant.SEMANTIC_LIVE || category == AIOpenConstant.SEMANTIC_VIDEO) {
-                        AIOpenRegister.register(context, category);
-                    } else {
-                        AIOpenRegister.registerAll(context);
-                    }
+                    // 夏杰语音要求重新注册: 统一按组合场景(直播+影视)重新注册
+                    AIOpenRegister.registerAll(context);
                     break;
                 }
                 case AIOpenConstant.ACTION_LIVE: {
