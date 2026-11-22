@@ -53,7 +53,7 @@
     push到master/main / 打v*标签 / 手动触发 时自动编译:
     - java flavor(debug+release, 双ABI) 上传artifact: TVBox-java-apk
     - python flavor(release, 需Chaquopy+Python3.8) artifact: TVBox-python-apk
-    release APK未签名, 安装前需自行签名; debug APK可直接安装
+    全部APK使用仓库内固定密钥(tvbox.jks)签名, 可直接安装与覆盖升级
     APK命名含ABI标识: -universal(32+64位合并) / -arm32(32位专用) / -arm64(64位专用)
     产物: java版(debug/release universal + release java32/java64) + python版(release python32/python64)
     APK同时发布到GitHub Release:

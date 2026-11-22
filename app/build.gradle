@@ -3,6 +3,16 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 33
 
+    signingConfigs {
+        // 固定签名密钥库(随仓库提供, 保证所有构建签名一致, 可直接安装与覆盖升级)
+        tvbox {
+            storeFile file('tvbox.jks')
+            storePassword 'tvbox123456'
+            keyAlias 'tvbox'
+            keyPassword 'tvbox123456'
+        }
+    }
+
     defaultConfig {
         applicationId 'com.github.tvbox.osc.jun'
         targetSdkVersion 28
@@ -99,9 +109,11 @@ android {
     buildTypes {
         debug {
             minifyEnabled false
+            signingConfig signingConfigs.tvbox
         }
         release {
             minifyEnabled true
+            signingConfig signingConfigs.tvbox
         }
     }
 

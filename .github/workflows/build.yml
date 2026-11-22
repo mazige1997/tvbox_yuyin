@@ -126,7 +126,7 @@ jobs:
       - name: 生成发布说明
         shell: bash
         run: |
-          printf '自动构建于 commit %s (%s)\n\n- TVBox_debug-java-universal.apk: debug版(32+64位合并), 可直接安装\n- TVBox_release-java-universal.apk: release版(32+64位合并), 未签名, 安装前需自行签名\n- TVBox_release-java32-arm32.apk: release版 32位专用(体积更小)\n- TVBox_release-java64-arm64.apk: release版 64位专用(体积更小)\n- TVBox_release-python32-arm32.apk / TVBox_release-python64-arm64.apk: 内置Python引擎版(若本次构建成功)\n' \
+          printf '自动构建于 commit %s (%s)\n\n- TVBox_debug-java-universal.apk: debug版(32+64位合并), 已签名, 可直接安装\n- TVBox_release-java-universal.apk: release版(32+64位合并), 已签名, 可直接安装\n- TVBox_release-java32-arm32.apk: release版 32位专用(体积更小)\n- TVBox_release-java64-arm64.apk: release版 64位专用(体积更小)\n- TVBox_release-python32-arm32.apk / TVBox_release-python64-arm64.apk: 内置Python引擎版(若本次构建成功)\n- 全部APK使用固定密钥签名, 后续构建可覆盖升级\n' \
             "${GITHUB_SHA:0:7}" "$(date '+%Y-%m-%d %H:%M UTC')" > release_notes.md
 
       - name: 发布 APK 到 Release
