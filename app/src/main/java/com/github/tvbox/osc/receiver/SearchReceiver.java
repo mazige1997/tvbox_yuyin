@@ -1,8 +1,10 @@
 package com.github.tvbox.osc.receiver;
 
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 
 import com.github.tvbox.osc.event.ServerEvent;
 import com.github.tvbox.osc.ui.activity.SearchActivity;
@@ -17,6 +19,20 @@ import org.greenrobot.eventbus.EventBus;
  */
 public class SearchReceiver extends BroadcastReceiver {
     public static String action = "android.content.movie.search.Action";
+
+    /**
+     * 发起一次远程搜索(远程搜索与语音搜索共用入口)
+     */
+    public static void send(Context context, String title) {
+        Intent intent = new Intent();
+        Bundle bundle = new Bundle();
+        bundle.putString("title", title);
+        intent.setAction(action);
+        intent.setPackage(context.getPackageName());
+        intent.setComponent(new ComponentName(context, SearchReceiver.class));
+        intent.putExtras(bundle);
+        context.sendBroadcast(intent);
+    }
 
     @Override
     public void onReceive(Context context, Intent intent) {

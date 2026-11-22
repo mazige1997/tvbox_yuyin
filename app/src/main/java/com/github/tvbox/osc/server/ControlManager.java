@@ -1,9 +1,6 @@
 package com.github.tvbox.osc.server;
 
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.os.Bundle;
 import android.text.TextUtils;
 
 import com.github.tvbox.osc.event.RefreshEvent;
@@ -70,14 +67,7 @@ public class ControlManager {
                 @Override
                 public void onTextReceived(String text) {
                     if (!TextUtils.isEmpty(text)) {
-                        Intent intent = new Intent();
-                        Bundle bundle = new Bundle();
-                        bundle.putString("title", text);
-                        intent.setAction(SearchReceiver.action);
-                        intent.setPackage(mContext.getPackageName());
-                        intent.setComponent(new ComponentName(mContext, SearchReceiver.class));
-                        intent.putExtras(bundle);
-                        mContext.sendBroadcast(intent);
+                        SearchReceiver.send(mContext, text);
                     }
                 }
 
