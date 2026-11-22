@@ -1999,6 +1999,7 @@ public class LivePlayActivity extends BaseActivity {
             for (LiveChannelItem item : groupChannels) {
                 if (item == null || TextUtils.isEmpty(item.getChannelName())) continue;
                 String normName = VoiceCommandParser.normalizeChannelKeyword(item.getChannelName());
+                if (TextUtils.isEmpty(normName)) continue;
                 boolean matched = exact ? normName.equals(normKeyword) : normName.contains(normKeyword);
                 if (matched) {
                     return new Integer[]{liveChannelGroup.getGroupIndex(), item.getChannelIndex()};
