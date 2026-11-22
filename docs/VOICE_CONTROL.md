@@ -210,13 +210,44 @@ TVBox 已注册以下标准 intent, 语音助手以任一方式分发均可到�
 
 无需音箱即可联调: 手机浏览器打开 `http://<TVBox IP>:9978/`, 搜索栏下方新增了**语音指令**输入框, 输入 `换台到CCTV5`、`第12集` 等点"发送"即可走与音箱完全相同的链路。
 
-## 八、源码位置
+## 八、语音调用日志(仅限原厂语音/夏杰语音通道)
+
+用于排查"语音助手到底有没有把指令送到TVBox、送了什么文本、解析执行结果如何"。
+
+### 记录范围
+
+| 来源 | 触发条件 |
+| --- | --- |
+| 电视原厂语音 | 电视/投影仪/盒子自带语音服务以系统标准搜索intent调用(SEARCH / GLOBAL_SEARCH / WEB_SEARCH / MEDIA_PLAY_FROM_SEARCH, activity或广播) |
+| 夏杰语音 | tvbox://voice / tvbox://search 深链调用 |
+| 未知来源 | 显式component方式打开 VoiceEntryActivity(如 adb 指定组件名) |
+
+**不记录**: HTTP `/voice` 接口、网页遥控语音输入框、自定义广播 `com.github.tvbox.osc.VOICE_COMMAND`(通用工具通道)。
+另外: 即使收到调用但未能提取到语音文本也会记录一条"未提取到语音文本", 便于发现助手侧参数配置问题。
+
+### 查看方式
+
+1. **网页遥控**(推荐, 手机浏览器即可): 打开 `http://<TVBox IP>:9978/`, 语音指令输入框旁点 **"日志"** 按钮;
+2. **HTTP接口**:
+   - `GET /voiceLog` → JSON数组(时间倒序)
+   - `GET /voiceLog?format=text` → 纯文本
+   - `GET /voiceLog?clear=1` → 清空日志
+3. **logcat**: `adb logcat -s TVBox-runtime`, 每条调用输出前缀 `VoiceLog[来源][动作]`。
+
+### 单条日志字段
+
+`time`(时间) / `source`(来源) / `action`(intent action) / `rawText`(语音文本) / `code`(0成功-1失败) / `msg`(执行结果) / `command`(解析出的指令)。
+
+> 日志仅保存在内存(最近100条), 应用退出后清空; 如需长期留存, 用 `adb logcat -s TVBox-runtime > voice.log` 抓取。
+
+## 九、源码位置
 
 - 解析器: `app/src/main/java/com/github/tvbox/osc/voice/VoiceCommandParser.java`
 - 调度中心: `app/src/main/java/com/github/tvbox/osc/voice/VoiceCommandManager.java`(含 extractText 文本提取)
+- 调用日志: `app/src/main/java/com/github/tvbox/osc/voice/VoiceLogManager.java`
 - 指令模型/事件: `voice/VoiceCommand.java`、`event/VoiceEvent.java`
 - 直播语音执行: `ui/activity/LivePlayActivity.java`(`onVoiceCommand`)
 - 点播语音执行: `ui/fragment/PlayFragment.java`(`onVoiceCommand`)
-- HTTP 入口: `server/RemoteServer.java`(`/voice`)、`server/InputRequestProcess.java`(`do=voice`)
+- HTTP 入口: `server/RemoteServer.java`(`/voice`、`/voiceLog`)、`server/InputRequestProcess.java`(`do=voice`)
 - 广播入口: `receiver/VoiceReceiver.java`
 - 深链入口: `ui/activity/VoiceEntryActivity.java`(`tvbox://voice` / `tvbox://search`)
