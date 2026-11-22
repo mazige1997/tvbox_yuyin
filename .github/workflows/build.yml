@@ -115,53 +115,27 @@ jobs:
           merge-multiple: true
           path: apks
 
-      - name: 发布到 Release
-        shell: bash
+      - name: 删除旧的 latest 预发布 (仅主分支推送, 让tag重新指向最新commit)
+        if: startsWith(github.ref, 'refs/heads/')
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: |
-          cd apks
-          echo "=== 产物目录(含子目录) ==="
-          ls -laR .
-          # 递归收集APK, 兼容artifact是否合并到根目录两种布局
-          APK_FILES=()
-          while IFS= read -r f; do
-            APK_FILES+=("${f#./}")
-          done < <(find . -type f -name "TVBox_*.apk")
-          if [ ${#APK_FILES[@]} -eq 0 ]; then
-            echo "::error::没有找到任何TVBox_*.apk文件"
-            exit 1
-          fi
-          echo "待发布文件: ${APK_FILES[*]}"
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            TAG="$GITHUB_REF_NAME"
-            echo "发布正式 Release: $TAG"
-            if gh release view "$TAG" >/dev/null 2>&1; then
-              gh release upload "$TAG" --clobber "${APK_FILES[@]}"
-            else
-              gh release create "$TAG" --title "TVBox $TAG" --generate-notes "${APK_FILES[@]}"
-            fi
-          else
-            TAG="latest"
-            echo "滚动更新 latest 预发布 (commit: $GITHUB_SHA)"
-            gh release delete "$TAG" --yes --cleanup-tag || true
-            gh release create "$TAG" \
-              --target "$GITHUB_SHA" \
-              --title "TVBox 最新构建" \
-              --notes "自动构建于 commit ${GITHUB_SHA:0:7} ($(date '+%Y-%m-%d %H:%M UTC'))
+        run: gh release delete latest --yes --cleanup-tag || true
 
-          - TVBox_debug-java.apk: debug版, 可直接安装
-          - TVBox_release-java.apk: release版, 未签名, 安装前需自行签名
-          - TVBox_release-python.apk: 内置Python引擎版(若本次构建成功)" \
-              --prerelease \
-              "${APK_FILES[@]}"
-          fi
-
-      - name: 输出发布结果
+      - name: 生成发布说明
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
         run: |
-          gh release view --json tagName,isPrerelease,assets --jq '{tag: .tagName, prerelease: .isPrerelease, assets: [.assets[].name]}'
+          printf '自动构建于 commit %s (%s)\n\n- TVBox_debug-java.apk: debug版, 可直接安装\n- TVBox_release-java.apk: release版, 未签名, 安装前需自行签名\n- TVBox_release-python.apk: 内置Python引擎版(若本次构建成功)\n' \
+            "${GITHUB_SHA:0:7}" "$(date '+%Y-%m-%d %H:%M UTC')" > release_notes.md
+
+      - name: 发布 APK 到 Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && format('TVBox {0}', github.ref_name) || 'TVBox 最新构建' }}
+          body_path: release_notes.md
+          generate_release_notes: true
+          files: apks/**/*.apk
+          fail_on_unmatched_files: true
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          target_commitish: ${{ github.sha }}
