@@ -20,6 +20,7 @@ import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.OkGoHelper;
 import com.github.tvbox.osc.util.Proxy;
+import com.github.tvbox.osc.voice.VoiceCommandManager;
 import com.google.gson.JsonArray;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -211,6 +212,8 @@ public class RemoteServer extends NanoHTTPD {
                     return handleAction(session.getParms());
                 } else if (fileName.equals("/media")) {
                     return handleMedia();
+                } else if (fileName.equals("/voice")) {
+                    return handleVoice(session.getParms());
                 }  else if (fileName.startsWith("/proxyM3u8")) {
 //                    com.github.tvbox.osc.util.LOG.i("echo-proxyM3u8 length:" + (m3u8Content == null ? 0 : m3u8Content.length()));
                     return NanoHTTPD.newFixedLengthResponse(Response.Status.OK, "application/vnd.apple.mpegurl", m3u8Content == null ? "" : m3u8Content);
@@ -428,6 +431,21 @@ public class RemoteServer extends NanoHTTPD {
             handleRefreshAction(params);
         }
         return createPlainTextResponse(Response.Status.OK, "ok");
+    }
+
+    /**
+     * 语音指令统一入口: GET/POST /voice?text=xxx
+     * 小爱音箱/天猫精灵/小度音箱等语音技能的服务端把识别文本转发到这里即可,
+     * 指令解析与执行见 VoiceCommandManager (docs/VOICE_CONTROL.md)。
+     */
+    private Response handleVoice(Map<String, String> params) {
+        String text = params == null ? null : params.get("text");
+        if (TextUtils.isEmpty(text)) text = params == null ? null : params.get("word");
+        if (TextUtils.isEmpty(text)) {
+            return createJSONResponse(Response.Status.OK, "{\"code\":-1,\"msg\":\"参数text不能为空\",\"command\":{\"type\":\"unknown\"}}");
+        }
+        JsonObject result = VoiceCommandManager.get().handle(mContext, text.trim());
+        return createJSONResponse(Response.Status.OK, result.toString());
     }
 
     private void handleRefreshAction(Map<String, String> params) {

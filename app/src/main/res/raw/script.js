@@ -2,6 +2,19 @@ function search() {
     doAction('search', { word: $('#search_key_word').val() });
 }
 
+function voice() {
+    var text = $('#voice_text').val();
+    if (!text) return false;
+    $.post('/action', { do: 'voice', text: text }, function (data) {
+        try {
+            var res = typeof data === 'string' ? JSON.parse(data) : data;
+            if (res && res.msg) warnToast(res.msg);
+        } catch (e) { console.log(data); }
+    });
+    $('#voice_text').val('');
+    return false;
+}
+
 function api() {
     doAction('api', { url: $('#diy_api_url').val() });
 }

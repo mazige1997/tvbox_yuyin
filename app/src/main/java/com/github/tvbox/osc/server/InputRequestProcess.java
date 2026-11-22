@@ -1,5 +1,10 @@
 package com.github.tvbox.osc.server;
 
+import android.text.TextUtils;
+
+import com.github.tvbox.osc.voice.VoiceCommandManager;
+import com.google.gson.JsonObject;
+
 import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
@@ -41,6 +46,9 @@ public class InputRequestProcess implements RequestProcess {
                             mDataReceiver.onTextReceived(params.get("word").trim());
                             break;
                         }
+                        case "voice": {
+                            return handleVoiceAction(params);
+                        }
                         case "api": {
                             mDataReceiver.onApiReceived(params.get("url").trim());
                             break;
@@ -66,5 +74,22 @@ public class InputRequestProcess implements RequestProcess {
             default:
                 return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.NOT_FOUND, "Error 404, file not found.");
         }
+    }
+
+    /** POST /action?do=voice&text=xxx: 语音指令入口(与GET /voice一致) */
+    private NanoHTTPD.Response handleVoiceAction(Map<String, String> params) {
+        String text = params.get("text");
+        if (TextUtils.isEmpty(text)) text = params.get("word");
+        if (TextUtils.isEmpty(text)) {
+            JsonObject result = new JsonObject();
+            result.addProperty("code", -1);
+            result.addProperty("msg", "参数text不能为空");
+            JsonObject cmdJson = new JsonObject();
+            cmdJson.addProperty("type", "unknown");
+            result.add("command", cmdJson);
+            return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK, result.toString());
+        }
+        JsonObject result = VoiceCommandManager.get().handle(ControlManager.mContext, text.trim());
+        return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK, result.toString());
     }
 }

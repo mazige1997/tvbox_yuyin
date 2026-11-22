@@ -108,6 +108,17 @@
                 <action android:name="android.content.movie.custom.web.Action" />
             </intent-filter>
         </receiver>
+        <receiver
+            android:name=".receiver.VoiceReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.github.tvbox.osc.VOICE_COMMAND" />
+                <!-- 兼容电视端语音助手以系统搜索intent唤起第三方应用 -->
+                <action android:name="android.intent.action.SEARCH" />
+                <action android:name="android.search.action.GLOBAL_SEARCH" />
+                <action android:name="android.intent.action.WEB_SEARCH" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"
