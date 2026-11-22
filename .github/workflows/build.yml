@@ -42,7 +42,7 @@ jobs:
         run: ls -lh app/build/outputs/apk/java/*/
 
       - name: 上传 APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: TVBox-java-apk
           path: app/build/outputs/apk/java/*/*.apk
@@ -89,7 +89,7 @@ jobs:
         run: ls -lh app/build/outputs/apk/python/*/
 
       - name: 上传 APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: TVBox-python-apk
           path: app/build/outputs/apk/python/*/*.apk
@@ -109,7 +109,7 @@ jobs:
       contents: write
     steps:
       - name: 下载构建产物
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: TVBox-*-apk
           merge-multiple: true

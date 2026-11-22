@@ -18,18 +18,31 @@
 -keepattributes LineNumberTable
 -renamesourcefileattribute SourceFile
 
-# 重新包装所有重命名的包并放在给定的单一包中
--flattenpackagehierarchy androidx.base
-
-# 将包里的类混淆成n个再重新打包到一个统一的package中  会覆盖flattenpackagehierarchy选项
+# 将包里的类混淆成n个再重新打包到一个统一的package中
 -repackageclasses androidx.base
 
-# 把混淆类中的方法名也混淆了
--useuniqueclassmembernames
 #############################################
 #
 # Android开发中一些需要保留的公共部分
 #
+
+# ==== R8缺失类警告(桌面Java专用依赖, Android运行时不会被调用, 官方CI的missing_rules.txt等价规则) ====
+-dontwarn com.bea.xml.stream.**          # xstream BEA StAX驱动(桌面)
+-dontwarn com.ctc.wstx.**                # xstream Woodstox驱动(桌面)
+-dontwarn java.awt.**                    # cling/xstream 桌面GUI引用
+-dontwarn java.beans.**                  # xstream JavaBean桌面特性
+-dontwarn javax.activation.**
+-dontwarn javax.swing.**                 # cling DLNA桌面GUI引用
+-dontwarn javax.xml.bind.**              # xstream JAXB转换器(桌面)
+-dontwarn javax.xml.stream.**            # StAX API(桌面, Android用XmlPullParser)
+-dontwarn net.sf.cglib.**                # xstream cglib代码增强(桌面)
+-dontwarn nu.xom.**                      # xstream XOM驱动
+-dontwarn org.codehaus.jettison.**       # xstream JSON/StAX驱动
+-dontwarn org.dom4j.**                   # xstream dom4j驱动
+-dontwarn org.jdom.**                    # xstream JDOM驱动
+-dontwarn org.jdom2.**                   # xstream JDOM2驱动
+-dontwarn org.joda.time.**               # xstream Joda-Time转换器
+-dontwarn org.kxml2.io.**                # Android平台运行时自带, 编译期不在类路径
 #############################################
 
 # 保留我们使用的四大组件，自定义的Application等等这些类不被混淆
