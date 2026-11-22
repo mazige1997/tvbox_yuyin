@@ -115,21 +115,32 @@ jobs:
           merge-multiple: true
           path: apks
 
-      - name: 列出待发布 APK
-        run: ls -lh apks/
-
       - name: 发布到 Release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           cd apks
+          echo "=== 产物目录(含子目录) ==="
+          ls -laR .
+          # 递归收集APK, 兼容artifact是否合并到根目录两种布局
+          APK_FILES=()
+          while IFS= read -r f; do
+            APK_FILES+=("${f#./}")
+          done < <(find . -type f -name "TVBox_*.apk")
+          if [ ${#APK_FILES[@]} -eq 0 ]; then
+            echo "::error::没有找到任何TVBox_*.apk文件"
+            exit 1
+          fi
+          echo "待发布文件: ${APK_FILES[*]}"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG="$GITHUB_REF_NAME"
             echo "发布正式 Release: $TAG"
             if gh release view "$TAG" >/dev/null 2>&1; then
-              gh release upload "$TAG" --clobber TVBox_*.apk
+              gh release upload "$TAG" --clobber "${APK_FILES[@]}"
             else
-              gh release create "$TAG" --title "TVBox $TAG" --generate-notes TVBox_*.apk
+              gh release create "$TAG" --title "TVBox $TAG" --generate-notes "${APK_FILES[@]}"
             fi
           else
             TAG="latest"
@@ -144,11 +155,13 @@ jobs:
           - TVBox_release-java.apk: release版, 未签名, 安装前需自行签名
           - TVBox_release-python.apk: 内置Python引擎版(若本次构建成功)" \
               --prerelease \
-              TVBox_*.apk
+              "${APK_FILES[@]}"
           fi
 
       - name: 输出发布结果
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           gh release view --json tagName,isPrerelease,assets --jq '{tag: .tagName, prerelease: .isPrerelease, assets: [.assets[].name]}'
