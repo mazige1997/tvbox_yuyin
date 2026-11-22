@@ -48,6 +48,18 @@ public class AIOpenCommandHandler {
                     handleVideo(context, data);
                     break;
                 }
+                case AIOpenConstant.ACTION_DEVICE_SCENE: {
+                    // 自定义场景关键词命中: extras keyword=命中的固定短语, 走统一语音解析
+                    String keyword = data == null ? null : data.getString(AIOpenConstant.PARAM_KEYWORD);
+                    if (TextUtils.isEmpty(keyword)) {
+                        VoiceLogManager.get().recordMissing(VoiceLogManager.SOURCE_XIAJIE, AIOpenConstant.ACTION_DEVICE_SCENE);
+                        return;
+                    }
+                    keyword = keyword.trim();
+                    JsonObject result = VoiceCommandManager.get().handleCommand(context, VoiceCommandParser.parse(keyword));
+                    VoiceLogManager.get().record(VoiceLogManager.SOURCE_XIAJIE, AIOpenConstant.ACTION_DEVICE_SCENE, keyword, result);
+                    break;
+                }
                 default:
                     break;
             }

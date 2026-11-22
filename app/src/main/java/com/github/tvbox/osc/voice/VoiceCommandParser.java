@@ -15,6 +15,8 @@ public class VoiceCommandParser {
 
     // ---- 播放控制(整句全匹配) ----
     private static final Pattern P_PAUSE = Pattern.compile("^(暂停|暂停播放|暂停一下|暂停片刻|别播了|停止播放|停止|关闭播放)$");
+    private static final Pattern P_REPLAY = Pattern.compile("^(重播|重新播放)$");
+    private static final Pattern P_EXIT = Pattern.compile("^(退出播放|退出全屏)$");
     private static final Pattern P_RESUME = Pattern.compile("^(继续|继续播放|接着播|接着播放|恢复播放|播放)$");
     private static final Pattern P_SEEK = Pattern.compile("^(快进|快退|倒退|后退|前进)([0-9]+|[零一二三四五六七八九十百两]+)?(个)?(秒|分钟|分|小时|时)?(钟)?(一下|一会儿)?(可以吗|行吗)?$");
     private static final Pattern P_VOLUME_UP = Pattern.compile("^(音量(调|加|增|升)?(大|高)点?|大声点|声音(大|高)点|调大音量|加大音量)$");
@@ -31,6 +33,7 @@ public class VoiceCommandParser {
     private static final Pattern P_EPISODE_NEXT = Pattern.compile("^(下一个?集|下个集|下一话|下个话|下一期|下个期|跳集)$");
     private static final Pattern P_EPISODE_PREV = Pattern.compile("^(上一个?集|上个集|上一话|上个话|上一期|上个期|跳回上集)$");
     private static final Pattern P_EPISODE_GOTO = Pattern.compile("^(我想看|我要看|我想观看|我要观看|播放|看|切到|切换到|跳到|跳转|跳转到|转到|换到|换台到|换集到|快进到|跳集到)?第([0-9]+|[零一二三四五六七八九十百两]+)(集|话|期)$");
+    private static final Pattern P_RESULT_PICK = Pattern.compile("^第([0-9]+|[零一二三四五六七八九十]+)个$");
 
     // ---- 换台动词: 显式指定直播的(即使后面不是标准频道名也按频道名处理) ----
     private static final String[] EXPLICIT_LIVE_VERBS = {
@@ -74,6 +77,8 @@ public class VoiceCommandParser {
         if (P_LIVE_NEXT.matcher(text).matches()) return finish(new VoiceCommand(VoiceCommand.TYPE_LIVE_NEXT), cmd);
         // 3. 剧集跳集(先于换台/搜索, 避免被"切换到第3集"截走)
         if ((parsed = parseEpisode(text)) != null) return finish(parsed, cmd);
+        // 3.5 选第N个搜索结果(夏杰自定义场景"第N个")
+        if ((parsed = parseResultPick(text)) != null) return finish(parsed, cmd);
         // 4. 第N台
         if ((parsed = parseLiveNumber(text)) != null) return finish(parsed, cmd);
         // 5. 显式换台动词: "换台到CCTV5" / "换频道湖南卫视" / "换台"
@@ -129,6 +134,8 @@ public class VoiceCommandParser {
     private static VoiceCommand parsePlayControl(String text) {
         if (P_PAUSE.matcher(text).matches()) return new VoiceCommand(VoiceCommand.TYPE_PLAY_PAUSE);
         if (P_RESUME.matcher(text).matches()) return new VoiceCommand(VoiceCommand.TYPE_PLAY_RESUME);
+        if (P_REPLAY.matcher(text).matches()) return new VoiceCommand(VoiceCommand.TYPE_PLAY_REPLAY);
+        if (P_EXIT.matcher(text).matches()) return new VoiceCommand(VoiceCommand.TYPE_PLAY_EXIT);
         Matcher m = matches(P_SEEK, text);
         if (m != null) {
             boolean forward = !text.startsWith("快退") && !text.startsWith("倒退") && !text.startsWith("后退");
@@ -160,6 +167,20 @@ public class VoiceCommandParser {
             int number = parseNumberToken(m.group(2));
             if (number > 0) {
                 VoiceCommand cmd = new VoiceCommand(VoiceCommand.TYPE_EPISODE_GOTO);
+                cmd.number = number;
+                return cmd;
+            }
+        }
+        return null;
+    }
+
+    /** 选第N个搜索结果: 第N个(N为阿拉伯或中文数字, 一~二十) */
+    private static VoiceCommand parseResultPick(String text) {
+        Matcher m = matches(P_RESULT_PICK, text);
+        if (m != null) {
+            int number = parseNumberToken(m.group(1));
+            if (number > 0) {
+                VoiceCommand cmd = new VoiceCommand(VoiceCommand.TYPE_RESULT_PICK);
                 cmd.number = number;
                 return cmd;
             }

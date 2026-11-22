@@ -108,6 +108,7 @@
                 <action android:name="com.peasun.aispeech.action.app.register.require" />
                 <action android:name="com.peasun.aispeech.action.live" />
                 <action android:name="com.peasun.aispeech.action.video" />
+                <action android:name="com.peasun.aispeech.action.device.scene" />
             </intent-filter>
         </service>
         <receiver
@@ -117,6 +118,7 @@
                 <action android:name="com.peasun.aispeech.action.app.register.require" />
                 <action android:name="com.peasun.aispeech.action.live" />
                 <action android:name="com.peasun.aispeech.action.video" />
+                <action android:name="com.peasun.aispeech.action.device.scene" />
             </intent-filter>
         </receiver>
 

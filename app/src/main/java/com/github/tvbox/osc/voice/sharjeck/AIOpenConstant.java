@@ -24,6 +24,13 @@ public class AIOpenConstant {
     public static final long SEMANTIC_LIVE = 0x1 << 2; // 0x4
     /** 场景类别: 影视 */
     public static final long SEMANTIC_VIDEO = 0x1 << 3; // 0x8
+    /** 场景类别: 自定义场景(可携带keywords关键词数组, 夏杰按包含匹配后派发action.device.scene) */
+    public static final long SEMANTIC_DEVICE_SCENE = 576460752303423488L;
+
+    /** 自定义场景派发action(夏杰→对接软件, extras: keyword=命中的关键词) */
+    public static final String ACTION_DEVICE_SCENE = "com.peasun.aispeech.action.device.scene";
+    /** 注册时的关键词数组参数名 */
+    public static final String PARAM_KEYWORDS = "keywords";
 
     /** 夏杰语音大陆版包名 */
     public static final String PKG_AISPEECH_CN = "com.peasun.aispeech";

@@ -52,6 +52,7 @@ public class App extends MultiDexApplication {
         aiopenFilter.addAction(com.github.tvbox.osc.voice.sharjeck.AIOpenConstant.ACTION_APP_REGISTER_REQUIRE);
         aiopenFilter.addAction(com.github.tvbox.osc.voice.sharjeck.AIOpenConstant.ACTION_LIVE);
         aiopenFilter.addAction(com.github.tvbox.osc.voice.sharjeck.AIOpenConstant.ACTION_VIDEO);
+        aiopenFilter.addAction(com.github.tvbox.osc.voice.sharjeck.AIOpenConstant.ACTION_DEVICE_SCENE);
         registerReceiver(new com.github.tvbox.osc.voice.sharjeck.SharjeckReceiver(), aiopenFilter);
         //初始化数据库
         AppDataManager.init();
