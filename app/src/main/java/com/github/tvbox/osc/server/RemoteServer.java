@@ -217,6 +217,8 @@ public class RemoteServer extends NanoHTTPD {
                     return handleVoice(session.getParms());
                 } else if (fileName.equals("/voiceLog")) {
                     return handleVoiceLog(session.getParms());
+                } else if (fileName.equals("/xjlog")) {
+                    return handleXjLog(session.getParms());
                 }  else if (fileName.startsWith("/proxyM3u8")) {
 //                    com.github.tvbox.osc.util.LOG.i("echo-proxyM3u8 length:" + (m3u8Content == null ? 0 : m3u8Content.length()));
                     return NanoHTTPD.newFixedLengthResponse(Response.Status.OK, "application/vnd.apple.mpegurl", m3u8Content == null ? "" : m3u8Content);
@@ -449,6 +451,44 @@ public class RemoteServer extends NanoHTTPD {
         }
         JsonObject result = VoiceCommandManager.get().handle(mContext, text.trim());
         return createJSONResponse(Response.Status.OK, result.toString());
+    }
+
+    /**
+     * 夏杰语音运行日志查看: 读取 /sdcard/Download/ai/aisharjeck_logs_*.txt (夏杰App内开日志开关后生成)
+     * GET /xjlog           → 最新日志尾部(默认400行)
+     * GET /xjlog?lines=1000 → 自定义行数
+     * GET /xjlog?list=1    → 列出日志文件
+     */
+    private Response handleXjLog(Map<String, String> params) {
+        try {
+            File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), "Download/ai");
+            File[] files = dir.listFiles((d, n) -> n.startsWith("aisharjeck_logs_") && n.endsWith(".txt"));
+            if (files == null || files.length == 0) {
+                return createPlainTextResponse(Response.Status.OK, "未找到夏杰日志文件(确认: 1.夏杰语音设置里已打开日志开关 2.开开关后说过话)");
+            }
+            java.util.Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+            if (params != null && "1".equals(params.get("list"))) {
+                StringBuilder sb = new StringBuilder();
+                for (File f : files) sb.append(f.getName()).append("  ").append(f.length() / 1024).append("KB\n");
+                return createPlainTextResponse(Response.Status.OK, sb.toString());
+            }
+            File latest = files[0];
+            if (params != null && !TextUtils.isEmpty(params.get("file"))) {
+                File named = new File(dir, params.get("file"));
+                if (named.exists()) latest = named;
+            }
+            int lines = 400;
+            try { lines = Math.max(50, Math.min(5000, Integer.parseInt(params == null ? "400" : params.getOrDefault("lines", "400")))); } catch (Exception ignored) { }
+            java.util.List<String> all = org.apache.commons.io.FileUtils.readLines(latest, "UTF-8");
+            int from = Math.max(0, all.size() - lines);
+            StringBuilder sb = new StringBuilder();
+            sb.append("# 文件: ").append(latest.getName()).append(" 总行数: ").append(all.size()).append("\n");
+            for (int i = from; i < all.size(); i++) sb.append(all.get(i)).append('\n');
+            return createPlainTextResponse(Response.Status.OK, sb.toString());
+        } catch (Throwable th) {
+            return createPlainTextResponse(Response.Status.OK, "读取夏杰日志失败: " + th.getMessage()
+                    + " (可能存储权限未授予)");
+        }
     }
 
     /**
